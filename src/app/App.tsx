@@ -1270,8 +1270,6 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [scrolled, setScrolled] = useState(false);
-  const [adminMode, setAdminMode] = useState<"off" | "login" | "dashboard">("off");
-  const [adminAuthed, setAdminAuthed] = useState(false);
   const [posts, setPosts] = useState<ReviewPost[]>(() => {
     try {
       const saved = localStorage.getItem("och_posts_v2");
@@ -1291,7 +1289,6 @@ export default function App() {
   }, [posts]);
 
   const handleSubmitPost = useCallback((post: ReviewPost) => { setPosts(prev => [post, ...prev]); }, []);
-  const handleDecide = useCallback((id: string, status: "approved" | "rejected") => { setPosts(prev => prev.map(p => p.id === id ? { ...p, status } : p)); }, []);
 
   useEffect(() => {
     const check = () => { if (window.location.hash === "#admin") window.location.hash = ""; };
@@ -1304,18 +1301,6 @@ export default function App() {
   const isHeroPage = page === "home";
   const transparent = isHeroPage && !scrolled;
   if (typeof window !== "undefined") { window.onscroll = () => setScrolled(window.scrollY > 60); }
-
-  if (adminMode === "login" && !adminAuthed) {
-    return (
-      <div style={{ fontFamily: "Inter, sans-serif" }}>
-        <AdminLogin onLogin={() => { setAdminAuthed(true); setAdminMode("dashboard"); }} />
-        <button onClick={() => { setAdminMode("off"); window.location.hash = ""; }} className="fixed top-4 left-4 text-xs font-bold text-gray-400 hover:text-gray-700 cursor-pointer bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">← Back to site</button>
-      </div>
-    );
-  }
-  if (adminMode === "dashboard" && adminAuthed) {
-    return <div style={{ fontFamily: "Inter, sans-serif" }}><AdminDashboard posts={posts} onDecide={handleDecide} onLogout={() => { setAdminAuthed(false); setAdminMode("off"); window.location.hash = ""; }} /></div>;
-  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
