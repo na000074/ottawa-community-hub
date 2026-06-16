@@ -14,6 +14,7 @@ import logo from "./logo.svg";
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 type Page = "home" | "news" | "accommodation" | "jobs" | "confessions" | "submit" | "resources" | "contact";
+type SubmitTab = "job" | "news" | "accommodation" | "confession" | "resource";
 type ReviewStatus = "pending" | "approved" | "rejected";
 type PostCategory = "job" | "accommodation" | "news" | "confession" | "resource" | "contact";
 
@@ -152,6 +153,35 @@ function isEmail(value: string) {
 function hasAny(value: string, words: string[]) {
   const text = value.toLowerCase();
   return words.some(word => text.includes(word));
+}
+
+function compressImage(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read image."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("Could not load image."));
+      image.onload = () => {
+        const maxSide = 900;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const width = Math.round(image.width * scale);
+        const height = Math.round(image.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not prepare image."));
+          return;
+        }
+        ctx.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
@@ -313,7 +343,7 @@ function JobCard({ job }: { job: ReviewPost }) {
   );
 }
 
-function HomePage({ navigate, approvedJobs, approvedAccommodation, approvedConfessions }: { navigate: (p: Page) => void; approvedJobs: ReviewPost[]; approvedAccommodation: ReviewPost[]; approvedConfessions: ReviewPost[] }) {
+function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodation, approvedConfessions }: { navigate: (p: Page) => void; navigateSubmit: (tab?: SubmitTab) => void; approvedJobs: ReviewPost[]; approvedAccommodation: ReviewPost[]; approvedConfessions: ReviewPost[] }) {
   return (
     <div>
       {/* Hero */}
@@ -331,7 +361,7 @@ function HomePage({ navigate, approvedJobs, approvedAccommodation, approvedConfe
               <p className="text-white/75 text-base md:text-lg mb-8 max-w-md leading-relaxed">Find local news, rooms, part-time jobs, community updates, and helpful resources for life in Ottawa.</p>
               <div className="flex flex-wrap gap-3">
                 <BtnWhiteHero onClick={() => navigate("news")}>Browse News</BtnWhiteHero>
-                <BtnOutlineHero onClick={() => navigate("submit")}>Submit a Post</BtnOutlineHero>
+                <BtnOutlineHero onClick={() => navigateSubmit()}>Submit a Post</BtnOutlineHero>
               </div>
               <div className="flex gap-6 mt-10 pt-8 border-t border-white/15">
                 {[{ n: `${approvedJobs.length}`, label: "Active job listings" }, { n: `${approvedAccommodation.length}`, label: "Room listings" }, { n: `${approvedConfessions.length}`, label: "Community posts" }].map(({ n, label }) => (
@@ -424,7 +454,7 @@ function HomePage({ navigate, approvedJobs, approvedAccommodation, approvedConfe
               <Briefcase size={28} className="text-gray-300 mx-auto mb-3" />
               <p className="text-sm font-black text-gray-400" style={{ fontFamily: "Merriweather, serif" }}>No approved jobs yet</p>
               <p className="text-xs text-gray-400 mt-1 mb-5">Be the first to post a job — it'll go live after admin review.</p>
-              <BtnDark onClick={() => navigate("submit")}>Post a Job</BtnDark>
+              <BtnDark onClick={() => navigateSubmit("job")}>Post a Job</BtnDark>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{approvedJobs.slice(0, 6).map(job => <JobCard key={job.id} job={job} />)}</div>
@@ -643,7 +673,7 @@ const LISTINGS: ReviewPost[] = [/*
   { tag: "green" as const, type: "Room Available", price: "$1,200/mo", area: "Barrhaven", beds: "1 Bed", detail: "Brand new build, modern kitchen, gym access included", avail: "ASAP" },
 */];
 
-function AccommodationPage({ navigate, approvedAccommodation }: { navigate: (p: Page) => void; approvedAccommodation: ReviewPost[] }) {
+function AccommodationPage({ navigateSubmit, approvedAccommodation }: { navigateSubmit: (tab?: SubmitTab) => void; approvedAccommodation: ReviewPost[] }) {
   const [typeF, setTypeF] = useState("All");
   const [areaF, setAreaF] = useState("All");
   const types = ["All", "Room Available", "Looking for Room", "Need Roommate", "Sublet"];
@@ -655,7 +685,7 @@ function AccommodationPage({ navigate, approvedAccommodation }: { navigate: (p: 
   return (
     <div>
       <PageHeader eyebrow="Ottawa Community Hub · Housing" title="Accommodation" sub="Rooms, sublets, roommate listings, and housing help across Ottawa.">
-        <BtnDark onClick={() => navigate("submit")} className="flex items-center gap-2"><PlusCircle size={14} /> Post a Listing</BtnDark>
+        <BtnDark onClick={() => navigateSubmit("accommodation")} className="flex items-center gap-2"><PlusCircle size={14} /> Post a Listing</BtnDark>
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -712,7 +742,9 @@ function AccommodationPage({ navigate, approvedAccommodation }: { navigate: (p: 
               const area = listing.details.Area || "Ottawa";
               const beds = listing.details.Beds || "Room";
               return (
-              <div key={listing.id} className="group bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col">
+              <div key={listing.id} className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col">
+                {listing.details.Image && <img src={listing.details.Image} alt={`${area} accommodation`} className="h-40 w-full object-cover bg-gray-100" />}
+                <div className="p-5 flex flex-col flex-1">
                 <Tag color={typeTag[listing.details.Type] || "gray"}>{listing.details.Type || "Listing"}</Tag>
                 <div className="mt-4 text-2xl font-black text-[#1a1a1a]">{listing.details.Price || "Contact"}</div>
                 <div className="flex items-center gap-1 text-xs text-gray-500 font-bold mt-1 mb-3"><MapPin size={11} />{area} · {beds}</div>
@@ -720,6 +752,7 @@ function AccommodationPage({ navigate, approvedAccommodation }: { navigate: (p: 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                   <span className="text-[11px] font-bold font-mono text-gray-400">Avail: {listing.details.Available || "Ask poster"}</span>
                   <span className="text-xs font-bold text-gray-300 group-hover:text-gray-600 transition-colors flex items-center gap-0.5">View <ChevronRight size={11} /></span>
+                </div>
                 </div>
               </div>
             );})}
@@ -732,7 +765,7 @@ function AccommodationPage({ navigate, approvedAccommodation }: { navigate: (p: 
 
 // ─── JOBS PAGE ────────────────────────────────────────────────────────────────
 
-function JobsPage({ navigate, approvedJobs }: { navigate: (p: Page) => void; approvedJobs: ReviewPost[] }) {
+function JobsPage({ navigateSubmit, approvedJobs }: { navigateSubmit: (tab?: SubmitTab) => void; approvedJobs: ReviewPost[] }) {
   const [typeF, setTypeF] = useState("All");
   const types = ["All", "Part-time", "Full-time", "Student", "Co-op", "Flexible"];
   const filtered = typeF === "All" ? approvedJobs : approvedJobs.filter(j => j.details["Job Type"] === typeF);
@@ -740,7 +773,7 @@ function JobsPage({ navigate, approvedJobs }: { navigate: (p: Page) => void; app
   return (
     <div>
       <PageHeader eyebrow="Ottawa Community Hub · Employment" title="Jobs in Ottawa" sub="Community-submitted job listings, reviewed and approved by our admin team before going live.">
-        <BtnDark onClick={() => navigate("submit")} className="flex items-center gap-2"><PlusCircle size={14} /> Post a Job</BtnDark>
+        <BtnDark onClick={() => navigateSubmit("job")} className="flex items-center gap-2"><PlusCircle size={14} /> Post a Job</BtnDark>
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -790,7 +823,7 @@ function JobsPage({ navigate, approvedJobs }: { navigate: (p: Page) => void; app
             <p className="text-sm text-gray-400 mb-6 max-w-xs mx-auto leading-relaxed">
               {approvedJobs.length === 0 ? "Be the first to post a job. Reviewed and published within 24 hours." : "Try a different filter, or submit a job in this category."}
             </p>
-            <BtnDark onClick={() => navigate("submit")} className="inline-flex items-center gap-2"><Send size={13} /> Submit a Job</BtnDark>
+            <BtnDark onClick={() => navigateSubmit("job")} className="inline-flex items-center gap-2"><Send size={13} /> Submit a Job</BtnDark>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{filtered.map(job => <JobCard key={job.id} job={job} />)}</div>
@@ -814,7 +847,7 @@ const CONFESSIONS_DATA: ReviewPost[] = [/*
   { cat: "Gratitude", text: "Ottawa food bank volunteers changed my life during a really hard stretch. If you can donate, please do. They do incredible work quietly." },
 */];
 
-function ConfessionsPage({ navigate, approvedConfessions }: { navigate: (p: Page) => void; approvedConfessions: ReviewPost[] }) {
+function ConfessionsPage({ navigateSubmit, approvedConfessions }: { navigateSubmit: (tab?: SubmitTab) => void; approvedConfessions: ReviewPost[] }) {
   const [cat, setCat] = useState("All");
   const cats = ["All", "Transit", "Neighbours", "Work", "School", "Gratitude", "General"];
   const catColor: Record<string, "blue" | "green" | "orange" | "gray"> = { Transit: "blue", Neighbours: "green", Work: "orange", School: "orange", Gratitude: "green", General: "gray" };
@@ -867,7 +900,7 @@ function ConfessionsPage({ navigate, approvedConfessions }: { navigate: (p: Page
           <MessageCircle size={24} className="text-white/30 mx-auto mb-3" />
           <h3 className="text-lg font-black text-white mb-2" style={{ fontFamily: "Merriweather, serif" }}>Have something to share?</h3>
           <p className="text-sm text-white/50 mb-5">It's completely anonymous. Every post is reviewed for safety before publishing.</p>
-          <BtnWhiteHero onClick={() => navigate("submit")}>Send Your Confession</BtnWhiteHero>
+          <BtnWhiteHero onClick={() => navigateSubmit("confession")}>Send Your Confession</BtnWhiteHero>
         </div>
       </div>
     </div>
@@ -876,9 +909,8 @@ function ConfessionsPage({ navigate, approvedConfessions }: { navigate: (p: Page
 
 // ─── SUBMIT PAGE ──────────────────────────────────────────────────────────────
 
-function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Promise<void> | void }) {
-  type Tab = "job" | "news" | "accommodation" | "confession" | "resource";
-  const [tab, setTab] = useState<Tab>("job");
+function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSubmitPost: (post: ReviewPost) => Promise<void> | void }) {
+  const [tab, setTab] = useState<SubmitTab>(initialTab);
   const [done, setDone] = useState(false);
   const [jobTitle, setJobTitle] = useState(""); const [company, setCompany] = useState("");
   const [pay, setPay] = useState(""); const [location, setLocation] = useState("");
@@ -888,6 +920,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
   const [newsDetails, setNewsDetails] = useState(""); const [newsSource, setNewsSource] = useState("");
   const [roomType, setRoomType] = useState("Room Available"); const [roomPrice, setRoomPrice] = useState("");
   const [roomArea, setRoomArea] = useState(""); const [roomDetails, setRoomDetails] = useState(""); const [roomContact, setRoomContact] = useState("");
+  const [roomImage, setRoomImage] = useState("");
   const [confessionCategory, setConfessionCategory] = useState("Transit"); const [confessionText, setConfessionText] = useState("");
   const [resourceName, setResourceName] = useState(""); const [resourceCategory, setResourceCategory] = useState("Student Help");
   const [resourceDescription, setResourceDescription] = useState(""); const [resourceContact, setResourceContact] = useState("");
@@ -895,7 +928,15 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
   const [submitTrap, setSubmitTrap] = useState("");
   const [submitStartedAt, setSubmitStartedAt] = useState(Date.now());
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  useEffect(() => {
+    setTab(initialTab);
+    setDone(false);
+    setSubmitError("");
+    setSubmitTrap("");
+    setSubmitStartedAt(Date.now());
+  }, [initialTab]);
+
+  const tabs: { key: SubmitTab; label: string; icon: React.ReactNode }[] = [
     { key: "job", label: "Share a Job", icon: <Briefcase size={14} /> },
     { key: "news", label: "Submit News", icon: <Newspaper size={14} /> },
     { key: "accommodation", label: "Post Room", icon: <Building2 size={14} /> },
@@ -904,6 +945,24 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
   ];
 
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
+
+  const handleRoomImage = async (file?: File) => {
+    setSubmitError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setSubmitError("Please upload an image file.");
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      setSubmitError("Image must be 6MB or smaller.");
+      return;
+    }
+    try {
+      setRoomImage(await compressImage(file));
+    } catch {
+      setSubmitError("Image could not be processed. Please try another photo.");
+    }
+  };
 
   const go = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -966,8 +1025,8 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
       setNewsHeadline(""); setNewsCategory("Transit"); setNewsDetails(""); setNewsSource("");
     } else if (tab === "accommodation") {
       const suspicious = ["deposit before viewing", "e-transfer", "wire transfer", "send money", "keys by mail", "western union", "crypto", "gift card", "application fee", "viewing fee"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
-      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact } });
-      setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact("");
+      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact, Image: roomImage } });
+      setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact(""); setRoomImage("");
     } else if (tab === "confession") {
       const unsafe = ["phone", "address", "full name", "kill", "dox", "instagram is", "snapchat is", "works at", "lives at"].some(kw => confessionText.toLowerCase().includes(kw));
       await onSubmitPost({ id: `c${Date.now()}`, type: "confession", title: "Anonymous Confession", submittedAt: now(), status: "pending", flagged: unsafe, details: { Category: confessionCategory, Text: confessionText } });
@@ -1075,6 +1134,23 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
                 </div>
                 <FF label="Details *" type="textarea" placeholder="Describe the room, rules, utilities, availability date..." value={roomDetails} onChange={setRoomDetails} />
                 <FF label="Contact (optional)" placeholder="Email or phone" value={roomContact} onChange={setRoomContact} />
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-gray-500 font-mono uppercase tracking-wider">Photo (optional)</label>
+                  <label className="border border-dashed border-gray-300 rounded-xl bg-[#f8f8f8] hover:bg-white transition-colors cursor-pointer p-4 flex flex-col gap-3">
+                    {roomImage ? (
+                      <img src={roomImage} alt="Accommodation preview" className="h-48 w-full object-cover rounded-lg border border-gray-200 bg-white" />
+                    ) : (
+                      <div className="h-28 rounded-lg border border-gray-200 bg-white flex flex-col items-center justify-center text-center">
+                        <Building2 size={22} className="text-gray-300 mb-2" />
+                        <p className="text-xs font-black text-gray-500">Upload a room photo</p>
+                        <p className="text-[11px] text-gray-400 mt-1">JPG or PNG, up to 6MB</p>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => void handleRoomImage(e.target.files?.[0])} />
+                    <span className="text-xs font-bold text-gray-500">{roomImage ? "Change photo" : "Choose photo"}</span>
+                  </label>
+                  {roomImage && <button type="button" onClick={() => setRoomImage("")} className="text-left text-xs font-bold text-red-500 hover:text-red-600 cursor-pointer">Remove photo</button>}
+                </div>
               </>)}
               {tab === "confession" && (<>
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs font-bold text-gray-500 leading-relaxed">
@@ -1106,7 +1182,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
 
 // ─── RESOURCES PAGE ───────────────────────────────────────────────────────────
 
-function ResourcesPage({ navigate }: { navigate: (p: Page) => void }) {
+function ResourcesPage({ navigateSubmit }: { navigateSubmit: (tab?: SubmitTab) => void }) {
   const cats = [
     { label: "Student Help", color: "blue" as const, icon: GraduationCap, items: [{ name: "uOttawa Student Academic Success", contact: "academic.success@uottawa.ca" }, { name: "Carleton Student Experience", contact: "sce@carleton.ca" }, { name: "OSAP Student Aid Ontario", contact: "ontario.ca/osap" }, { name: "Student Wellness Centre (uOttawa)", contact: "613-562-5200" }] },
     { label: "Newcomer Help", color: "green" as const, icon: Heart, items: [{ name: "ACCES Employment Ottawa", contact: "accesemployment.ca" }, { name: "Catholic Centre for Immigrants", contact: "613-232-9634" }, { name: "Ottawa Community Immigrant Services", contact: "ociso.org" }, { name: "Settlement.org (Province)", contact: "settlement.org" }] },
@@ -1161,7 +1237,7 @@ function ResourcesPage({ navigate }: { navigate: (p: Page) => void }) {
             <h3 className="text-lg font-black text-white mb-1" style={{ fontFamily: "Merriweather, serif" }}>Know a resource we should add?</h3>
             <p className="text-sm text-white/50 leading-relaxed">Help us keep this list accurate and useful for every Ottawa resident.</p>
           </div>
-          <BtnWhiteHero onClick={() => navigate("submit")}>Suggest a Resource</BtnWhiteHero>
+          <BtnWhiteHero onClick={() => navigateSubmit("resource")}>Suggest a Resource</BtnWhiteHero>
         </div>
       </div>
     </div>
@@ -1180,6 +1256,7 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
   const [contactTrap, setContactTrap] = useState("");
   const [contactStartedAt, setContactStartedAt] = useState(Date.now());
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
+
   const go = async (e: React.FormEvent) => {
     e.preventDefault();
     setContactError("");
@@ -1481,7 +1558,7 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
                     {post.flagged && <span className="flex items-center gap-1 text-[10px] font-black font-mono text-red-600 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded"><AlertTriangle size={9} /> FLAGGED</span>}
                   </div>
                   <p className="text-xs font-bold text-gray-400 font-mono">Submitted: {post.submittedAt}</p>
-                  {Object.entries(post.details).slice(0, 2).map(([k, v]) => v && <p key={k} className="text-xs text-gray-500 font-medium mt-0.5"><span className="text-gray-400 font-bold">{k}:</span> {v}</p>)}
+                  {Object.entries(post.details).filter(([k]) => k !== "Image").slice(0, 2).map(([k, v]) => v && <p key={k} className="text-xs text-gray-500 font-medium mt-0.5"><span className="text-gray-400 font-bold">{k}:</span> {v}</p>)}
                 </div>
                 <div className="shrink-0"><StatusBadge status={post.status} /></div>
                 <ChevronRight size={15} className="text-gray-300 shrink-0 mt-1" />
@@ -1507,8 +1584,9 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
             </div>
             <div className="px-6 py-5 max-h-72 overflow-y-auto">
               <p className="text-[11px] font-black font-mono uppercase tracking-widest text-gray-400 mb-3">Submission Details</p>
+              {selected.details.Image && <img src={selected.details.Image} alt="Submission upload" className="mb-4 h-48 w-full object-cover rounded-lg border border-gray-200 bg-gray-100" />}
               <div className="flex flex-col gap-3">
-                {Object.entries(selected.details).map(([k, v]) => v && <div key={k} className="flex flex-col gap-0.5"><p className="text-[11px] font-black text-gray-400 font-mono uppercase tracking-wide">{k}</p><p className="text-sm font-medium text-[#1a1a1a] leading-relaxed">{v}</p></div>)}
+                {Object.entries(selected.details).filter(([k]) => k !== "Image").map(([k, v]) => v && <div key={k} className="flex flex-col gap-0.5"><p className="text-[11px] font-black text-gray-400 font-mono uppercase tracking-wide">{k}</p><p className="text-sm font-medium text-[#1a1a1a] leading-relaxed">{v}</p></div>)}
               </div>
             </div>
             {selected.status !== "pending" && (
@@ -1536,6 +1614,7 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [adminMode, setAdminMode] = useState<"off" | "login" | "dashboard">("off");
   const [adminToken, setAdminToken] = useState("");
+  const [submitTab, setSubmitTab] = useState<SubmitTab>("job");
   const [posts, setPosts] = useState<ReviewPost[]>(() => {
     try {
       const saved = localStorage.getItem("och_posts_v2");
@@ -1629,7 +1708,16 @@ export default function App() {
     return <AdminDashboard posts={posts} onDecide={handleDecide} onLogout={closeAdmin} />;
   }
 
-  const navigate = (p: Page) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const navigate = (p: Page) => {
+    if (p === "submit") setSubmitTab("job");
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const navigateSubmit = (tab: SubmitTab = "job") => {
+    setSubmitTab(tab);
+    setPage("submit");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const isHeroPage = page === "home";
   const transparent = isHeroPage && !scrolled;
 
@@ -1639,13 +1727,13 @@ export default function App() {
         <Navbar current={page} navigate={navigate} transparent={transparent} />
       </div>
       <main className="flex-1">
-        {page === "home" && <HomePage navigate={navigate} approvedJobs={approvedJobs} approvedAccommodation={approvedAccommodation} approvedConfessions={approvedConfessions} />}
+        {page === "home" && <HomePage navigate={navigate} navigateSubmit={navigateSubmit} approvedJobs={approvedJobs} approvedAccommodation={approvedAccommodation} approvedConfessions={approvedConfessions} />}
         {page === "news" && <NewsPage approvedNews={approvedNews} />}
-        {page === "accommodation" && <AccommodationPage navigate={navigate} approvedAccommodation={approvedAccommodation} />}
-        {page === "jobs" && <JobsPage navigate={navigate} approvedJobs={approvedJobs} />}
-        {page === "confessions" && <ConfessionsPage navigate={navigate} approvedConfessions={approvedConfessions} />}
-        {page === "submit" && <SubmitPage onSubmitPost={handleSubmitPost} />}
-        {page === "resources" && <ResourcesPage navigate={navigate} />}
+        {page === "accommodation" && <AccommodationPage navigateSubmit={navigateSubmit} approvedAccommodation={approvedAccommodation} />}
+        {page === "jobs" && <JobsPage navigateSubmit={navigateSubmit} approvedJobs={approvedJobs} />}
+        {page === "confessions" && <ConfessionsPage navigateSubmit={navigateSubmit} approvedConfessions={approvedConfessions} />}
+        {page === "submit" && <SubmitPage initialTab={submitTab} onSubmitPost={handleSubmitPost} />}
+        {page === "resources" && <ResourcesPage navigateSubmit={navigateSubmit} />}
         {page === "contact" && <ContactPage onSubmitPost={handleSubmitPost} />}
       </main>
       <button onClick={openAdmin} className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-[#1a1a1a] px-4 py-3 text-xs font-black text-white shadow-xl hover:bg-[#333] md:right-6 md:bottom-6">
