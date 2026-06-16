@@ -240,7 +240,7 @@ function Navbar({ current, navigate, transparent }: { current: Page; navigate: (
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button onClick={() => navigate("home")} className="flex items-center gap-3 cursor-pointer">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden ${transparent ? "bg-white/15 backdrop-blur-sm ring-1 ring-white/25" : "bg-[#111] ring-1 ring-gray-200 shadow-sm"}`}>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden ${transparent ? "bg-white shadow-sm" : "bg-white ring-1 ring-gray-200 shadow-sm"}`}>
               <img src={logo} alt="Ottawa Confession logo" className="h-full w-full" />
             </div>
             <div className="hidden sm:block text-left">
@@ -1311,7 +1311,7 @@ function Footer({ navigate }: { navigate: (p: Page) => void }) {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-7 h-7 bg-white rounded flex items-center justify-center"><span className="text-[#111] text-xs font-black font-mono">OCH</span></div>
+              <div className="w-7 h-7 bg-white rounded flex items-center justify-center overflow-hidden"><img src={logo} alt="Ottawa Confession logo" className="h-full w-full" /></div>
               <span className="text-sm font-black" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</span>
             </div>
             <p className="text-xs font-medium text-gray-400 leading-relaxed mb-3">Ottawa news, rooms, jobs, and community updates in one place.</p>
