@@ -15,7 +15,7 @@ import logo from "./logo.png";
 
 type Page = "home" | "news" | "accommodation" | "jobs" | "confessions" | "submit" | "resources" | "contact";
 type ReviewStatus = "pending" | "approved" | "rejected";
-type PostCategory = "job" | "accommodation" | "news" | "confession";
+type PostCategory = "job" | "accommodation" | "news" | "confession" | "resource" | "contact";
 
 interface ReviewPost {
   id: string;
@@ -28,7 +28,88 @@ interface ReviewPost {
 }
 
 const INITIAL_QUEUE: ReviewPost[] = [];
-const LIVE_NEWS_SOURCE_URL = "https://news.google.com/rss/search?q=Ottawa%20community%20OR%20transit%20OR%20housing%20OR%20students&hl=en-CA&gl=CA&ceid=CA:en";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const HAS_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+type SupabasePost = {
+  id: string;
+  type: PostCategory;
+  title: string;
+  submitted_at: string;
+  status: ReviewStatus;
+  flagged: boolean;
+  details: Record<string, string>;
+};
+
+function fromSupabasePost(post: SupabasePost): ReviewPost {
+  return {
+    id: post.id,
+    type: post.type,
+    title: post.title,
+    submittedAt: post.submitted_at,
+    status: post.status,
+    flagged: post.flagged,
+    details: post.details || {},
+  };
+}
+
+function toSupabasePost(post: ReviewPost) {
+  return {
+    type: post.type,
+    title: post.title,
+    submitted_at: post.submittedAt,
+    status: post.status,
+    flagged: post.flagged,
+    details: post.details,
+  };
+}
+
+async function supabaseRequest(path: string, options: RequestInit = {}, token?: string) {
+  const headers = new Headers(options.headers);
+  headers.set("apikey", SUPABASE_ANON_KEY);
+  headers.set("Authorization", `Bearer ${token || SUPABASE_ANON_KEY}`);
+  if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
+
+  const response = await fetch(`${SUPABASE_URL}${path}`, { ...options, headers });
+  if (!response.ok) throw new Error(await response.text());
+  return response;
+}
+
+async function signInAdmin(email: string, password: string) {
+  const response = await supabaseRequest("/auth/v1/token?grant_type=password", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!data.access_token) throw new Error("Missing access token");
+  return data.access_token as string;
+}
+
+async function fetchPosts({ adminToken }: { adminToken?: string } = {}) {
+  const query = adminToken
+    ? "/rest/v1/posts?select=*&order=submitted_at.desc"
+    : "/rest/v1/posts?select=*&status=eq.approved&order=submitted_at.desc";
+  const response = await supabaseRequest(query, {}, adminToken);
+  const data = await response.json();
+  return (Array.isArray(data) ? data : []).map(fromSupabasePost);
+}
+
+async function createPost(post: ReviewPost) {
+  await supabaseRequest("/rest/v1/posts", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(toSupabasePost(post)),
+  });
+}
+
+async function updatePostStatus(id: string, status: ReviewStatus, adminToken: string) {
+  await supabaseRequest(`/rest/v1/posts?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ status }),
+  }, adminToken);
+}
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 
@@ -751,7 +832,7 @@ function ConfessionsPage({ navigate, approvedConfessions }: { navigate: (p: Page
 
 // ─── SUBMIT PAGE ──────────────────────────────────────────────────────────────
 
-function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void }) {
+function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Promise<void> | void }) {
   type Tab = "job" | "news" | "accommodation" | "confession" | "resource";
   const [tab, setTab] = useState<Tab>("job");
   const [done, setDone] = useState(false);
@@ -764,6 +845,9 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void
   const [roomType, setRoomType] = useState("Room Available"); const [roomPrice, setRoomPrice] = useState("");
   const [roomArea, setRoomArea] = useState(""); const [roomDetails, setRoomDetails] = useState(""); const [roomContact, setRoomContact] = useState("");
   const [confessionCategory, setConfessionCategory] = useState("Transit"); const [confessionText, setConfessionText] = useState("");
+  const [resourceName, setResourceName] = useState(""); const [resourceCategory, setResourceCategory] = useState("Student Help");
+  const [resourceDescription, setResourceDescription] = useState(""); const [resourceContact, setResourceContact] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "job", label: "Share a Job", icon: <Briefcase size={14} /> },
@@ -775,28 +859,36 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void
 
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
 
-  const go = (e: React.FormEvent) => {
+  const go = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
+    try {
     if (tab === "job") {
       const suspicious = ["sin", "social insurance", "bank info", "e-transfer", "$500/day", "commission only", "dm on instagram"].some(kw =>
         [jobTitle, company, description, howToApply].join(" ").toLowerCase().includes(kw)
       );
-      onSubmitPost({ id: `j${Date.now()}`, type: "job", title: jobTitle || "Job Posting", submittedAt: now(), status: "pending", flagged: suspicious, details: { "Job Title": jobTitle, "Company": company, "Pay": pay, "Location": location, "Job Type": jobType, "Schedule": schedule, "Description": description, "How to Apply": howToApply } });
+      await onSubmitPost({ id: `j${Date.now()}`, type: "job", title: jobTitle || "Job Posting", submittedAt: now(), status: "pending", flagged: suspicious, details: { "Job Title": jobTitle, "Company": company, "Pay": pay, "Location": location, "Job Type": jobType, "Schedule": schedule, "Description": description, "How to Apply": howToApply } });
       setJobTitle(""); setCompany(""); setPay(""); setLocation(""); setJobType("Part-time"); setSchedule(""); setDescription(""); setHowToApply("");
     } else if (tab === "news") {
-      onSubmitPost({ id: `n${Date.now()}`, type: "news", title: newsHeadline || "Community News", submittedAt: now(), status: "pending", flagged: false, details: { Category: newsCategory, Summary: newsDetails, Source: newsSource } });
+      await onSubmitPost({ id: `n${Date.now()}`, type: "news", title: newsHeadline || "Community News", submittedAt: now(), status: "pending", flagged: false, details: { Category: newsCategory, Summary: newsDetails, Source: newsSource } });
       setNewsHeadline(""); setNewsCategory("Transit"); setNewsDetails(""); setNewsSource("");
     } else if (tab === "accommodation") {
       const suspicious = ["deposit", "e-transfer", "wire transfer", "send money", "keys by mail"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
-      onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact } });
+      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact } });
       setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact("");
     } else if (tab === "confession") {
       const unsafe = ["phone", "address", "full name", "kill", "dox"].some(kw => confessionText.toLowerCase().includes(kw));
-      onSubmitPost({ id: `c${Date.now()}`, type: "confession", title: "Anonymous Confession", submittedAt: now(), status: "pending", flagged: unsafe, details: { Category: confessionCategory, Text: confessionText } });
+      await onSubmitPost({ id: `c${Date.now()}`, type: "confession", title: "Anonymous Confession", submittedAt: now(), status: "pending", flagged: unsafe, details: { Category: confessionCategory, Text: confessionText } });
       setConfessionCategory("Transit"); setConfessionText("");
+    } else if (tab === "resource") {
+      await onSubmitPost({ id: `r${Date.now()}`, type: "resource", title: resourceName || "Community Resource", submittedAt: now(), status: "pending", flagged: false, details: { Category: resourceCategory, Description: resourceDescription, Contact: resourceContact } });
+      setResourceName(""); setResourceCategory("Student Help"); setResourceDescription(""); setResourceContact("");
     }
     setDone(true);
     setTimeout(() => setDone(false), 5000);
+    } catch {
+      setSubmitError("Submission could not be saved right now. Please try again.");
+    }
   };
 
   return (
@@ -846,6 +938,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void
             </div>
 
             <div className="p-6 flex flex-col gap-5">
+              {submitError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} className="text-red-500 shrink-0" /><p className="text-xs font-bold text-red-600">{submitError}</p></div>}
               {tab === "job" && (<>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2">
                   <Info size={14} className="text-amber-600 mt-0.5 shrink-0" />
@@ -887,10 +980,10 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void
                 <FF label="Your Confession *" type="textarea" placeholder="Write your anonymous confession here..." rows={6} value={confessionText} onChange={setConfessionText} />
               </>)}
               {tab === "resource" && (<>
-                <FF label="Resource Name *" placeholder="e.g. Ottawa Food Bank" />
-                <FF label="Category" type="select" opts={["Student Help", "Newcomer Help", "Housing Help", "Job Search", "Transit", "Emergency", "Health", "Other"]} />
-                <FF label="Description *" type="textarea" placeholder="What does this resource offer and who is it for?" />
-                <FF label="Website or Contact *" placeholder="https://... or phone number" />
+                <FF label="Resource Name *" placeholder="e.g. Ottawa Food Bank" value={resourceName} onChange={setResourceName} />
+                <FF label="Category" type="select" opts={["Student Help", "Newcomer Help", "Housing Help", "Job Search", "Transit", "Emergency", "Health", "Other"]} value={resourceCategory} onChange={setResourceCategory} />
+                <FF label="Description *" type="textarea" placeholder="What does this resource offer and who is it for?" value={resourceDescription} onChange={setResourceDescription} />
+                <FF label="Website or Contact *" placeholder="https://... or phone number" value={resourceContact} onChange={setResourceContact} />
               </>)}
 
               <div className="pt-2">
@@ -909,7 +1002,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => void
 
 // ─── RESOURCES PAGE ───────────────────────────────────────────────────────────
 
-function ResourcesPage() {
+function ResourcesPage({ navigate }: { navigate: (p: Page) => void }) {
   const cats = [
     { label: "Student Help", color: "blue" as const, icon: GraduationCap, items: [{ name: "uOttawa Student Academic Success", contact: "academic.success@uottawa.ca" }, { name: "Carleton Student Experience", contact: "sce@carleton.ca" }, { name: "OSAP Student Aid Ontario", contact: "ontario.ca/osap" }, { name: "Student Wellness Centre (uOttawa)", contact: "613-562-5200" }] },
     { label: "Newcomer Help", color: "green" as const, icon: Heart, items: [{ name: "ACCES Employment Ottawa", contact: "accesemployment.ca" }, { name: "Catholic Centre for Immigrants", contact: "613-232-9634" }, { name: "Ottawa Community Immigrant Services", contact: "ociso.org" }, { name: "Settlement.org (Province)", contact: "settlement.org" }] },
@@ -964,7 +1057,7 @@ function ResourcesPage() {
             <h3 className="text-lg font-black text-white mb-1" style={{ fontFamily: "Merriweather, serif" }}>Know a resource we should add?</h3>
             <p className="text-sm text-white/50 leading-relaxed">Help us keep this list accurate and useful for every Ottawa resident.</p>
           </div>
-          <BtnWhiteHero>Suggest a Resource</BtnWhiteHero>
+          <BtnWhiteHero onClick={() => navigate("submit")}>Suggest a Resource</BtnWhiteHero>
         </div>
       </div>
     </div>
@@ -973,9 +1066,34 @@ function ResourcesPage() {
 
 // ─── CONTACT PAGE ─────────────────────────────────────────────────────────────
 
-function ContactPage() {
+function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Promise<void> | void }) {
   const [sent, setSent] = useState(false);
-  const go = (e: React.FormEvent) => { e.preventDefault(); setSent(true); setTimeout(() => setSent(false), 4000); };
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("General Inquiry");
+  const [message, setMessage] = useState("");
+  const [contactError, setContactError] = useState("");
+  const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
+  const go = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactError("");
+    try {
+      await onSubmitPost({
+        id: `m${Date.now()}`,
+        type: "contact",
+        title: subject || "Contact Message",
+        submittedAt: now(),
+        status: "pending",
+        flagged: subject === "Scam Report" || subject === "Report Content",
+        details: { Name: name, Email: email, Subject: subject, Message: message },
+      });
+      setName(""); setEmail(""); setSubject("General Inquiry"); setMessage("");
+      setSent(true);
+      setTimeout(() => setSent(false), 4000);
+    } catch {
+      setContactError("Message could not be saved right now. Please try again.");
+    }
+  };
 
   return (
     <div>
@@ -995,12 +1113,13 @@ function ContactPage() {
             ) : (
               <form onSubmit={go} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                 <div className="p-6 flex flex-col gap-5">
+                  {contactError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} className="text-red-500 shrink-0" /><p className="text-xs font-bold text-red-600">{contactError}</p></div>}
                   <div className="grid grid-cols-2 gap-4">
-                    <FF label="Your Name *" placeholder="Jane Smith" />
-                    <FF label="Email Address *" placeholder="you@example.com" />
+                    <FF label="Your Name *" placeholder="Jane Smith" value={name} onChange={setName} />
+                    <FF label="Email Address *" placeholder="you@example.com" value={email} onChange={setEmail} />
                   </div>
-                  <FF label="Subject" type="select" opts={["General Inquiry", "Report Content", "Partnership", "Suggest Feature", "Scam Report", "Other"]} />
-                  <FF label="Message *" type="textarea" placeholder="Write your message here..." rows={6} />
+                  <FF label="Subject" type="select" opts={["General Inquiry", "Report Content", "Partnership", "Suggest Feature", "Scam Report", "Other"]} value={subject} onChange={setSubject} />
+                  <FF label="Message *" type="textarea" placeholder="Write your message here..." rows={6} value={message} onChange={setMessage} />
                   <BtnDark className="w-full flex items-center justify-center gap-2"><Send size={14} /> Send Message</BtnDark>
                 </div>
               </form>
@@ -1098,12 +1217,24 @@ function Footer({ navigate }: { navigate: (p: Page) => void }) {
 
 // ─── ADMIN LOGIN ──────────────────────────────────────────────────────────────
 
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
+function AdminLogin({ onLogin, onClose }: { onLogin: (token: string) => void; onClose: () => void }) {
   const [user, setUser] = useState(""); const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setLoading(true);
-    setTimeout(() => { setError("Admin portal is disabled on the public site."); setLoading(false); }, 700);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError("");
+    if (!HAS_SUPABASE) {
+      setError("Secure backend is not configured yet.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = await signInAdmin(user.trim(), pass);
+      onLogin(token);
+    } catch {
+      setError("Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <div className="min-h-screen bg-[#f4f4f5] flex items-center justify-center px-4">
@@ -1115,13 +1246,13 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
         </div>
         <form onSubmit={submit} className="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-black text-gray-500 font-mono uppercase tracking-wider">Username</label>
-            <input type="text" value={user} onChange={e => setUser(e.target.value)} placeholder="Enter username" autoComplete="off" className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
+            <label className="text-[11px] font-black text-gray-500 font-mono uppercase tracking-wider">Email</label>
+            <input type="email" value={user} onChange={e => setUser(e.target.value)} placeholder="admin@example.com" autoComplete="username" className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-black text-gray-500 font-mono uppercase tracking-wider">Password</label>
             <div className="relative">
-              <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="Enter password" autoComplete="new-password" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
+              <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="Enter password" autoComplete="current-password" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
               <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">{showPass ? <EyeOff size={15} /> : <Eye size={15} />}</button>
             </div>
           </div>
@@ -1131,6 +1262,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+        <button onClick={onClose} className="block mx-auto mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 cursor-pointer">Back to site</button>
         <p className="text-center text-xs font-bold text-gray-400 mt-5">Unauthorized access is prohibited.</p>
       </div>
     </div>
@@ -1139,19 +1271,19 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; onDecide: (id: string, status: "approved" | "rejected") => void; onLogout: () => void }) {
+function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; onDecide: (id: string, status: "approved" | "rejected") => Promise<void> | void; onLogout: () => void }) {
   const [view, setView] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [typeFilter, setTypeFilter] = useState<PostCategory | "all">("all");
   const [selected, setSelected] = useState<ReviewPost | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
-  const decide = (id: string, status: "approved" | "rejected") => { onDecide(id, status); setSelected(null); showToast(status === "approved" ? "✓ Post approved — now live on the site." : "✗ Post rejected and removed."); };
+  const decide = async (id: string, status: "approved" | "rejected") => { await onDecide(id, status); setSelected(null); showToast(status === "approved" ? "Post approved - now live on the site." : "Post rejected and removed."); };
 
   const filtered = posts.filter(p => (view === "all" || p.status === view) && (typeFilter === "all" || p.type === typeFilter));
   const counts = { pending: posts.filter(p => p.status === "pending").length, approved: posts.filter(p => p.status === "approved").length, rejected: posts.filter(p => p.status === "rejected").length, flagged: posts.filter(p => p.flagged && p.status === "pending").length };
-  const typeLabel: Record<PostCategory, string> = { job: "Job", accommodation: "Room", news: "News", confession: "Confession" };
-  const typeColor: Record<PostCategory, "blue" | "green" | "orange" | "gray"> = { job: "orange", accommodation: "green", news: "blue", confession: "gray" };
+  const typeLabel: Record<PostCategory, string> = { job: "Job", accommodation: "Room", news: "News", confession: "Confession", resource: "Resource", contact: "Contact" };
+  const typeColor: Record<PostCategory, "blue" | "green" | "orange" | "gray"> = { job: "orange", accommodation: "green", news: "blue", confession: "gray", resource: "green", contact: "blue" };
 
   useEffect(() => { if (selected) { const u = posts.find(p => p.id === selected.id); if (u) setSelected(u); } }, [posts]);
 
@@ -1199,7 +1331,7 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
               <span className="text-gray-400 font-bold text-xs ml-2 font-mono">({filtered.length})</span>
             </p>
             <div className="flex flex-wrap gap-2">
-              {(["all", "job", "accommodation", "news", "confession"] as const).map(t => (
+              {(["all", "job", "accommodation", "news", "confession", "resource", "contact"] as const).map(t => (
                 <button key={t} onClick={() => setTypeFilter(t)} className={`px-3 py-1 text-xs rounded border cursor-pointer transition-colors font-black ${typeFilter === t ? "bg-[#1a1a1a] text-white border-[#1a1a1a]" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}>
                   {t === "all" ? "All Types" : typeLabel[t]}
                 </button>
@@ -1250,7 +1382,7 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
             {selected.status !== "pending" && (
               <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
                 <p className="text-xs font-bold text-gray-500">Status:</p><StatusBadge status={selected.status} />
-                {selected.status === "approved" && <span className="text-xs font-black text-emerald-600 font-mono ml-1">· Live on Jobs page</span>}
+                {selected.status === "approved" && <span className="text-xs font-black text-emerald-600 font-mono ml-1">- Live on site</span>}
               </div>
             )}
             <div className="px-6 py-4 border-t border-gray-100 bg-white flex gap-3">
@@ -1270,6 +1402,8 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [scrolled, setScrolled] = useState(false);
+  const [adminMode, setAdminMode] = useState<"off" | "login" | "dashboard">("off");
+  const [adminToken, setAdminToken] = useState("");
   const [posts, setPosts] = useState<ReviewPost[]>(() => {
     try {
       const saved = localStorage.getItem("och_posts_v2");
@@ -1283,24 +1417,74 @@ export default function App() {
   const approvedAccommodation = posts.filter(p => p.type === "accommodation" && p.status === "approved");
   const approvedConfessions = posts.filter(p => p.type === "confession" && p.status === "approved");
 
-  // Persist every change to localStorage
   useEffect(() => {
+    if (HAS_SUPABASE) return;
     try { localStorage.setItem("och_posts_v2", JSON.stringify(posts)); } catch {}
   }, [posts]);
 
-  const handleSubmitPost = useCallback((post: ReviewPost) => { setPosts(prev => [post, ...prev]); }, []);
+  const refreshPosts = useCallback(async (token?: string) => {
+    if (!HAS_SUPABASE) return;
+    const nextPosts = await fetchPosts({ adminToken: token });
+    setPosts(nextPosts);
+  }, []);
 
   useEffect(() => {
-    const check = () => { if (window.location.hash === "#admin") window.location.hash = ""; };
+    void refreshPosts();
+  }, [refreshPosts]);
+
+  const handleSubmitPost = useCallback(async (post: ReviewPost) => {
+    if (HAS_SUPABASE) {
+      await createPost(post);
+      if (adminToken) await refreshPosts(adminToken);
+      return;
+    }
+    setPosts(prev => [post, ...prev]);
+  }, [adminToken, refreshPosts]);
+
+  const handleDecide = useCallback(async (id: string, status: "approved" | "rejected") => {
+    if (HAS_SUPABASE && adminToken) {
+      await updatePostStatus(id, status, adminToken);
+    }
+    setPosts(prev => prev.map(post => post.id === id ? { ...post, status } : post));
+  }, [adminToken]);
+
+  const closeAdmin = useCallback(() => {
+    setAdminMode("off");
+    setAdminToken("");
+    if (window.location.hash === "#admin") window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    void refreshPosts();
+  }, [refreshPosts]);
+
+  const openAdmin = useCallback(() => {
+    setAdminMode(adminToken ? "dashboard" : "login");
+    if (window.location.hash !== "#admin") window.location.hash = "admin";
+  }, [adminToken]);
+
+  useEffect(() => {
+    const check = () => { if (window.location.hash === "#admin") setAdminMode(adminToken ? "dashboard" : "login"); };
     check();
     window.addEventListener("hashchange", check);
     return () => window.removeEventListener("hashchange", check);
+  }, [adminToken]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  if (adminMode === "login" && !adminToken) {
+    return <AdminLogin onClose={closeAdmin} onLogin={async token => { setAdminToken(token); setAdminMode("dashboard"); await refreshPosts(token); }} />;
+  }
+
+  if (adminMode === "dashboard" && adminToken) {
+    return <AdminDashboard posts={posts} onDecide={handleDecide} onLogout={closeAdmin} />;
+  }
 
   const navigate = (p: Page) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const isHeroPage = page === "home";
   const transparent = isHeroPage && !scrolled;
-  if (typeof window !== "undefined") { window.onscroll = () => setScrolled(window.scrollY > 60); }
 
   return (
     <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -1314,9 +1498,13 @@ export default function App() {
         {page === "jobs" && <JobsPage navigate={navigate} approvedJobs={approvedJobs} />}
         {page === "confessions" && <ConfessionsPage navigate={navigate} approvedConfessions={approvedConfessions} />}
         {page === "submit" && <SubmitPage onSubmitPost={handleSubmitPost} />}
-        {page === "resources" && <ResourcesPage />}
-        {page === "contact" && <ContactPage />}
+        {page === "resources" && <ResourcesPage navigate={navigate} />}
+        {page === "contact" && <ContactPage onSubmitPost={handleSubmitPost} />}
       </main>
+      <button onClick={openAdmin} className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-[#1a1a1a] px-4 py-3 text-xs font-black text-white shadow-xl hover:bg-[#333] md:right-6 md:bottom-6">
+        <Lock size={14} />
+        Staff
+      </button>
       <Footer navigate={navigate} />
     </div>
   );
