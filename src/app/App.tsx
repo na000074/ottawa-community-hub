@@ -155,6 +155,14 @@ function hasAny(value: string, words: string[]) {
   return words.some(word => text.includes(word));
 }
 
+function formatAccommodationPrice(value: string) {
+  const price = clean(value);
+  if (!price) return "";
+  if (price.includes("$") || /contact|ask|free|budget/i.test(price)) return price;
+  if (/^\d+(\.\d{1,2})?(\/\w+)?$/i.test(price)) return `$${price}`;
+  return price;
+}
+
 function compressImage(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -746,7 +754,7 @@ function AccommodationPage({ navigateSubmit, approvedAccommodation }: { navigate
                 {listing.details.Image && <img src={listing.details.Image} alt={`${area} accommodation`} className="h-40 w-full object-cover bg-gray-100" />}
                 <div className="p-5 flex flex-col flex-1">
                 <Tag color={typeTag[listing.details.Type] || "gray"}>{listing.details.Type || "Listing"}</Tag>
-                <div className="mt-4 text-2xl font-black text-[#1a1a1a]">{listing.details.Price || "Contact"}</div>
+                <div className="mt-4 text-2xl font-black text-[#1a1a1a]">{formatAccommodationPrice(listing.details.Price || "") || "Contact"}</div>
                 <div className="flex items-center gap-1 text-xs text-gray-500 font-bold mt-1 mb-3"><MapPin size={11} />{area} · {beds}</div>
                 <p className="text-xs text-gray-400 leading-relaxed mb-4 flex-1">{listing.details.Detail || listing.details.Details}</p>
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -1025,7 +1033,7 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
       setNewsHeadline(""); setNewsCategory("Transit"); setNewsDetails(""); setNewsSource("");
     } else if (tab === "accommodation") {
       const suspicious = ["deposit before viewing", "e-transfer", "wire transfer", "send money", "keys by mail", "western union", "crypto", "gift card", "application fee", "viewing fee"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
-      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact, Image: roomImage } });
+      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: formatAccommodationPrice(roomPrice), Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact, Image: roomImage } });
       setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact(""); setRoomImage("");
     } else if (tab === "confession") {
       const unsafe = ["phone", "address", "full name", "kill", "dox", "instagram is", "snapchat is", "works at", "lives at"].some(kw => confessionText.toLowerCase().includes(kw));
