@@ -241,13 +241,13 @@ function Navbar({ current, navigate, transparent }: { current: Page; navigate: (
           {/* Logo */}
           <button onClick={() => navigate("home")} className="flex items-center gap-3 cursor-pointer">
             <div className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden ${transparent ? "bg-white shadow-sm" : "bg-white ring-1 ring-gray-200 shadow-sm"}`}>
-              <img src={logo} alt="Ottawa Confession logo" className="h-full w-full" />
+              <img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" />
             </div>
             <div className="hidden sm:block text-left">
-              <div className={`text-base font-black leading-tight tracking-tight ${transparent ? "text-white" : "text-[#111]"}`} style={{ fontFamily: "Merriweather, serif" }}>Ottawa Confession</div>
-              <div className={`text-[10px] font-bold font-mono leading-tight uppercase tracking-wider ${transparent ? "text-white/65" : "text-gray-500"}`}>Community Hub</div>
+              <div className={`text-base font-black leading-tight tracking-tight ${transparent ? "text-white" : "text-[#111]"}`} style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</div>
+              <div className={`text-[10px] font-bold font-mono leading-tight uppercase tracking-wider ${transparent ? "text-white/65" : "text-gray-500"}`}>Ottawa Confession</div>
             </div>
-            <div className={`sm:hidden text-sm font-black ${transparent ? "text-white" : "text-[#111]"}`} style={{ fontFamily: "Merriweather, serif" }}>Ottawa Confession</div>
+            <div className={`sm:hidden text-sm font-black ${transparent ? "text-white" : "text-[#111]"}`} style={{ fontFamily: "Merriweather, serif" }}>Ottawa Hub</div>
           </button>
 
           {/* Desktop Nav */}
@@ -1311,7 +1311,7 @@ function Footer({ navigate }: { navigate: (p: Page) => void }) {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-7 h-7 bg-white rounded flex items-center justify-center overflow-hidden"><img src={logo} alt="Ottawa Confession logo" className="h-full w-full" /></div>
+              <div className="w-7 h-7 bg-white rounded flex items-center justify-center overflow-hidden"><img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" /></div>
               <span className="text-sm font-black" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</span>
             </div>
             <p className="text-xs font-medium text-gray-400 leading-relaxed mb-3">Ottawa news, rooms, jobs, and community updates in one place.</p>
@@ -1423,8 +1423,8 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
     <div className="min-h-screen bg-[#f4f4f5] flex flex-col">
       <header className="bg-[#1a1a1a] text-white px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center overflow-hidden"><img src={logo} alt="Ottawa Confession logo" className="h-full w-full" /></div>
-          <span className="text-sm font-black" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Confession</span>
+          <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center overflow-hidden"><img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" /></div>
+          <span className="text-sm font-black" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</span>
           <span className="text-gray-600 text-xs font-bold font-mono hidden sm:inline">/ Admin Panel</span>
         </div>
         <div className="flex items-center gap-4">
