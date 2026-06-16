@@ -126,7 +126,7 @@ with check (
 
 1. In Supabase, open Authentication > Users.
 2. Click Add user > Create new user.
-3. Enter the admin email and password.
+3. Enter the admin email and a strong unique password.
 4. Open the new user and copy the user UUID.
 5. Go back to SQL Editor and run this, replacing the values:
 
@@ -138,6 +138,14 @@ set email = excluded.email;
 ```
 
 The admin email and password stay in Supabase Auth. They are not stored in GitHub and are not stored in the React app.
+
+Recommended Auth settings:
+
+- Use a strong unique admin password.
+- Keep the admin account limited to trusted staff only.
+- Disable public sign-ups unless you intentionally add user accounts later.
+- If your Supabase plan supports extra identity protections, enable them for the admin account.
+- The website keeps the admin token in memory only and signs out after 20 minutes of inactivity.
 
 ## GitHub Pages Environment
 

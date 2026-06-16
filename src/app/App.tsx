@@ -4,7 +4,7 @@ import {
   Newspaper, Home, Building2, Briefcase, MessageCircle, BookOpen,
   Menu, X, ChevronRight, MapPin, Clock, AlertTriangle, Heart,
   Phone, Instagram, ArrowRight, CheckCircle, Info, GraduationCap,
-  Bus, Shield, Lock, Eye, EyeOff, LogOut, CheckSquare, XSquare,
+  Bus, Shield, Lock, LogOut, CheckSquare, XSquare,
   Inbox, LayoutDashboard, BadgeCheck, Ban, RefreshCw, AlertCircle,
   Send, PlusCircle, Search, Filter, Star, Zap, Users, TrendingUp,
   FileText, HelpCircle, ChevronDown,
@@ -30,6 +30,7 @@ interface ReviewPost {
 const INITIAL_QUEUE: ReviewPost[] = [];
 const SUBMISSION_COOLDOWN_MS = 15000;
 const MIN_FORM_TIME_MS = 1800;
+const ADMIN_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const HAS_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -1352,7 +1353,7 @@ function Footer({ navigate }: { navigate: (p: Page) => void }) {
 
 function AdminLogin({ onLogin, onClose }: { onLogin: (token: string) => void; onClose: () => void }) {
   const [user, setUser] = useState(""); const [pass, setPass] = useState("");
-  const [showPass, setShowPass] = useState(false); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setError("");
     if (!HAS_SUPABASE) {
@@ -1384,10 +1385,7 @@ function AdminLogin({ onLogin, onClose }: { onLogin: (token: string) => void; on
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-black text-gray-500 font-mono uppercase tracking-wider">Password</label>
-            <div className="relative">
-              <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="Enter password" autoComplete="current-password" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">{showPass ? <EyeOff size={15} /> : <Eye size={15} />}</button>
-            </div>
+            <input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="Enter password" autoComplete="current-password" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-[#f6f6f7] focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-medium" />
           </div>
           {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} className="text-red-500 shrink-0" /><p className="text-xs font-bold text-red-600">{error}</p></div>}
           <button type="submit" disabled={loading} className="bg-[#1a1a1a] text-white py-2.5 rounded-lg text-sm font-black hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2">
@@ -1606,6 +1604,21 @@ export default function App() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (adminMode !== "dashboard" || !adminToken) return;
+    let timer = window.setTimeout(closeAdmin, ADMIN_IDLE_TIMEOUT_MS);
+    const resetTimer = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(closeAdmin, ADMIN_IDLE_TIMEOUT_MS);
+    };
+    const events = ["click", "keydown", "mousemove", "touchstart", "scroll"];
+    events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [adminMode, adminToken, closeAdmin]);
 
   if (adminMode === "login" && !adminToken) {
     return <AdminLogin onClose={closeAdmin} onLogin={async token => { setAdminToken(token); setAdminMode("dashboard"); await refreshPosts(token); }} />;
