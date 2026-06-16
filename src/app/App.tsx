@@ -341,16 +341,17 @@ function HomePage({ navigate, approvedJobs, approvedAccommodation, approvedConfe
             </div>
             <div className="hidden lg:grid grid-cols-2 gap-3">
               {[
-                { icon: Newspaper, label: "Ottawa News", sub: "12 new posts today", color: "text-blue-300", bg: "bg-blue-500/10" },
-                { icon: Building2, label: "Accommodation", sub: `${approvedAccommodation.length} active listings`, color: "text-emerald-300", bg: "bg-emerald-500/10" },
-                { icon: Briefcase, label: "Jobs", sub: `${approvedJobs.length} approved jobs`, color: "text-amber-300", bg: "bg-amber-500/10" },
-                { icon: BookOpen, label: "Resources", sub: "Guides & contacts", color: "text-gray-300", bg: "bg-white/10" },
-              ].map(({ icon: Icon, label, sub, color, bg }) => (
-                <div key={label} className={`${bg} backdrop-blur-sm border border-white/15 rounded-xl p-5 hover:bg-white/15 transition-colors cursor-pointer`}>
+                { icon: Newspaper, label: "Ottawa News", sub: "12 new posts today", color: "text-blue-300", bg: "bg-blue-500/10", page: "news" as Page },
+                { icon: Building2, label: "Accommodation", sub: `${approvedAccommodation.length} active listings`, color: "text-emerald-300", bg: "bg-emerald-500/10", page: "accommodation" as Page },
+                { icon: Briefcase, label: "Jobs", sub: `${approvedJobs.length} approved jobs`, color: "text-amber-300", bg: "bg-amber-500/10", page: "jobs" as Page },
+                { icon: BookOpen, label: "Resources", sub: "Guides & contacts", color: "text-gray-300", bg: "bg-white/10", page: "resources" as Page },
+              ].map(({ icon: Icon, label, sub, color, bg, page }) => (
+                <button key={label} onClick={() => navigate(page)} className={`${bg} group text-left backdrop-blur-sm border border-white/15 rounded-xl p-5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70 transition-colors cursor-pointer`}>
                   <Icon size={20} className={`${color} mb-3`} />
                   <p className="text-sm font-bold text-white mb-1">{label}</p>
                   <p className="text-xs text-white/50">{sub}</p>
-                </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-white/40 group-hover:text-white/70 transition-colors">Open <ChevronRight size={12} /></span>
+                </button>
               ))}
             </div>
           </div>
