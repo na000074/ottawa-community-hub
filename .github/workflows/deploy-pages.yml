@@ -15,8 +15,8 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_SUPABASE_URL: https://tukdniypfvfnidmqwbys.supabase.co
+  VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1a2RuaXlwZnZmbmlkbXF3YnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzY2NDEsImV4cCI6MjA5NzE1MjY0MX0.mFoqbX-Uwsps3vss7CbTzhS0jMqD9btFU5c8PHDgNsQ
 
 concurrency:
   group: pages
