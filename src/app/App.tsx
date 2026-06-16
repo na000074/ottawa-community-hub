@@ -127,6 +127,32 @@ function markSubmitted(cooldownKey: string) {
   try { localStorage.setItem(cooldownKey, String(Date.now())); } catch {}
 }
 
+function clean(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function firstMissing(fields: Array<[string, string]>) {
+  const missing = fields.find(([, value]) => !clean(value));
+  return missing ? `${missing[0]} is required.` : "";
+}
+
+function tooShort(label: string, value: string, minLength: number) {
+  return clean(value).length < minLength ? `${label} needs at least ${minLength} characters.` : "";
+}
+
+function tooLong(label: string, value: string, maxLength: number) {
+  return clean(value).length > maxLength ? `${label} must be ${maxLength} characters or less.` : "";
+}
+
+function isEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(value));
+}
+
+function hasAny(value: string, words: string[]) {
+  const text = value.toLowerCase();
+  return words.some(word => text.includes(word));
+}
+
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ReviewStatus }) {
@@ -885,9 +911,50 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
       setSubmitError(spamMessage);
       return;
     }
+    let validationError = "";
+    if (tab === "job") {
+      validationError =
+        firstMissing([["Job title", jobTitle], ["Company", company], ["Pay", pay], ["Location", location], ["How to apply", howToApply]]) ||
+        tooShort("Job description", description, 20) ||
+        tooLong("Job title", jobTitle, 90) ||
+        tooLong("Company", company, 80) ||
+        tooLong("Job description", description, 1200) ||
+        tooLong("How to apply", howToApply, 240);
+    } else if (tab === "news") {
+      validationError =
+        firstMissing([["Headline", newsHeadline], ["Story details", newsDetails]]) ||
+        tooShort("Story details", newsDetails, 30) ||
+        tooLong("Headline", newsHeadline, 140) ||
+        tooLong("Story details", newsDetails, 1600);
+    } else if (tab === "accommodation") {
+      validationError =
+        firstMissing([["Price or budget", roomPrice], ["Area", roomArea], ["Details", roomDetails]]) ||
+        tooShort("Room details", roomDetails, 30) ||
+        tooLong("Room details", roomDetails, 1200) ||
+        tooLong("Contact", roomContact, 240);
+    } else if (tab === "confession") {
+      validationError =
+        firstMissing([["Confession", confessionText]]) ||
+        tooShort("Confession", confessionText, 20) ||
+        tooLong("Confession", confessionText, 1000);
+      if (!validationError && hasAny(confessionText, ["kill yourself", "i will kill", "dox", "address is", "phone number is"])) {
+        validationError = "Please remove threats or identifying information before submitting.";
+      }
+    } else if (tab === "resource") {
+      validationError =
+        firstMissing([["Resource name", resourceName], ["Description", resourceDescription], ["Website or contact", resourceContact]]) ||
+        tooShort("Resource description", resourceDescription, 20) ||
+        tooLong("Resource name", resourceName, 100) ||
+        tooLong("Resource description", resourceDescription, 800) ||
+        tooLong("Website or contact", resourceContact, 240);
+    }
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
     try {
     if (tab === "job") {
-      const suspicious = ["sin", "social insurance", "bank info", "e-transfer", "$500/day", "commission only", "dm on instagram"].some(kw =>
+      const suspicious = ["sin", "social insurance", "bank info", "e-transfer", "$500/day", "commission only", "dm on instagram", "telegram", "gift card", "crypto", "pay upfront", "training fee", "processing fee"].some(kw =>
         [jobTitle, company, description, howToApply].join(" ").toLowerCase().includes(kw)
       );
       await onSubmitPost({ id: `j${Date.now()}`, type: "job", title: jobTitle || "Job Posting", submittedAt: now(), status: "pending", flagged: suspicious, details: { "Job Title": jobTitle, "Company": company, "Pay": pay, "Location": location, "Job Type": jobType, "Schedule": schedule, "Description": description, "How to Apply": howToApply } });
@@ -896,11 +963,11 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
       await onSubmitPost({ id: `n${Date.now()}`, type: "news", title: newsHeadline || "Community News", submittedAt: now(), status: "pending", flagged: false, details: { Category: newsCategory, Summary: newsDetails, Source: newsSource } });
       setNewsHeadline(""); setNewsCategory("Transit"); setNewsDetails(""); setNewsSource("");
     } else if (tab === "accommodation") {
-      const suspicious = ["deposit", "e-transfer", "wire transfer", "send money", "keys by mail"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
+      const suspicious = ["deposit before viewing", "e-transfer", "wire transfer", "send money", "keys by mail", "western union", "crypto", "gift card", "application fee", "viewing fee"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
       await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: roomPrice, Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact } });
       setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact("");
     } else if (tab === "confession") {
-      const unsafe = ["phone", "address", "full name", "kill", "dox"].some(kw => confessionText.toLowerCase().includes(kw));
+      const unsafe = ["phone", "address", "full name", "kill", "dox", "instagram is", "snapchat is", "works at", "lives at"].some(kw => confessionText.toLowerCase().includes(kw));
       await onSubmitPost({ id: `c${Date.now()}`, type: "confession", title: "Anonymous Confession", submittedAt: now(), status: "pending", flagged: unsafe, details: { Category: confessionCategory, Text: confessionText } });
       setConfessionCategory("Transit"); setConfessionText("");
     } else if (tab === "resource") {
@@ -989,7 +1056,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
                   <FF label="Job Type" type="select" opts={["Part-time", "Full-time", "Student", "Co-op", "Flexible"]} value={jobType} onChange={setJobType} />
                 </div>
                 <FF label="Schedule" placeholder="e.g. Weekends + evenings, 20 hrs/week" value={schedule} onChange={setSchedule} />
-                <FF label="Description" type="textarea" placeholder="Describe the role, duties, and requirements..." value={description} onChange={setDescription} />
+                <FF label="Description *" type="textarea" placeholder="Describe the role, duties, and requirements..." value={description} onChange={setDescription} />
                 <FF label="How to Apply *" placeholder="Email, website link, or walk-in instructions" value={howToApply} onChange={setHowToApply} />
               </>)}
               {tab === "news" && (<>
@@ -1117,6 +1184,17 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
     const spamMessage = shouldBlockSpam(contactTrap, contactStartedAt, "och_contact_last_at");
     if (spamMessage) {
       setContactError(spamMessage);
+      return;
+    }
+    const validationError =
+      firstMissing([["Name", name], ["Email", email], ["Message", message]]) ||
+      (!isEmail(email) ? "Please enter a valid email address." : "") ||
+      tooShort("Message", message, 20) ||
+      tooLong("Name", name, 80) ||
+      tooLong("Email", email, 120) ||
+      tooLong("Message", message, 1200);
+    if (validationError) {
+      setContactError(validationError);
       return;
     }
     try {
