@@ -28,6 +28,8 @@ interface ReviewPost {
 }
 
 const INITIAL_QUEUE: ReviewPost[] = [];
+const SUBMISSION_COOLDOWN_MS = 15000;
+const MIN_FORM_TIME_MS = 1800;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const HAS_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -109,6 +111,20 @@ async function updatePostStatus(id: string, status: ReviewStatus, adminToken: st
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ status }),
   }, adminToken);
+}
+
+function shouldBlockSpam(trapValue: string, formStartedAt: number, cooldownKey: string) {
+  if (trapValue.trim()) return "Submission blocked.";
+  if (Date.now() - formStartedAt < MIN_FORM_TIME_MS) return "Please take a moment before submitting.";
+  try {
+    const lastSubmit = Number(localStorage.getItem(cooldownKey) || 0);
+    if (Date.now() - lastSubmit < SUBMISSION_COOLDOWN_MS) return "Please wait a few seconds before submitting again.";
+  } catch {}
+  return "";
+}
+
+function markSubmitted(cooldownKey: string) {
+  try { localStorage.setItem(cooldownKey, String(Date.now())); } catch {}
 }
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
@@ -848,6 +864,8 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
   const [resourceName, setResourceName] = useState(""); const [resourceCategory, setResourceCategory] = useState("Student Help");
   const [resourceDescription, setResourceDescription] = useState(""); const [resourceContact, setResourceContact] = useState("");
   const [submitError, setSubmitError] = useState("");
+  const [submitTrap, setSubmitTrap] = useState("");
+  const [submitStartedAt, setSubmitStartedAt] = useState(Date.now());
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "job", label: "Share a Job", icon: <Briefcase size={14} /> },
@@ -862,6 +880,11 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
   const go = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
+    const spamMessage = shouldBlockSpam(submitTrap, submitStartedAt, "och_submit_last_at");
+    if (spamMessage) {
+      setSubmitError(spamMessage);
+      return;
+    }
     try {
     if (tab === "job") {
       const suspicious = ["sin", "social insurance", "bank info", "e-transfer", "$500/day", "commission only", "dm on instagram"].some(kw =>
@@ -884,6 +907,8 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
       await onSubmitPost({ id: `r${Date.now()}`, type: "resource", title: resourceName || "Community Resource", submittedAt: now(), status: "pending", flagged: false, details: { Category: resourceCategory, Description: resourceDescription, Contact: resourceContact } });
       setResourceName(""); setResourceCategory("Student Help"); setResourceDescription(""); setResourceContact("");
     }
+    markSubmitted("och_submit_last_at");
+    setSubmitStartedAt(Date.now());
     setDone(true);
     setTimeout(() => setDone(false), 5000);
     } catch {
@@ -899,7 +924,7 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
         {/* Tab selector */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-8">
           {tabs.map(({ key, label, icon }) => (
-            <button key={key} onClick={() => { setTab(key); setDone(false); }}
+            <button key={key} onClick={() => { setTab(key); setDone(false); setSubmitError(""); setSubmitTrap(""); setSubmitStartedAt(Date.now()); }}
               className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border font-bold cursor-pointer transition-all text-xs ${tab === key ? "bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-lg" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
               {icon}
               <span className="text-center leading-tight">{label}</span>
@@ -926,6 +951,16 @@ function SubmitPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Prom
           </div>
         ) : (
           <form onSubmit={go} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <input
+              type="text"
+              name="website"
+              value={submitTrap}
+              onChange={e => setSubmitTrap(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+            />
             {/* Form header */}
             <div className="bg-[#f8f8f8] border-b border-gray-200 px-6 py-4 flex items-center gap-2">
               <div className="w-7 h-7 bg-[#1a1a1a] rounded-lg flex items-center justify-center text-white">
@@ -1073,10 +1108,17 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
   const [subject, setSubject] = useState("General Inquiry");
   const [message, setMessage] = useState("");
   const [contactError, setContactError] = useState("");
+  const [contactTrap, setContactTrap] = useState("");
+  const [contactStartedAt, setContactStartedAt] = useState(Date.now());
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
   const go = async (e: React.FormEvent) => {
     e.preventDefault();
     setContactError("");
+    const spamMessage = shouldBlockSpam(contactTrap, contactStartedAt, "och_contact_last_at");
+    if (spamMessage) {
+      setContactError(spamMessage);
+      return;
+    }
     try {
       await onSubmitPost({
         id: `m${Date.now()}`,
@@ -1088,6 +1130,9 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
         details: { Name: name, Email: email, Subject: subject, Message: message },
       });
       setName(""); setEmail(""); setSubject("General Inquiry"); setMessage("");
+      setContactTrap("");
+      markSubmitted("och_contact_last_at");
+      setContactStartedAt(Date.now());
       setSent(true);
       setTimeout(() => setSent(false), 4000);
     } catch {
@@ -1112,6 +1157,16 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
               </div>
             ) : (
               <form onSubmit={go} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <input
+                  type="text"
+                  name="company"
+                  value={contactTrap}
+                  onChange={e => setContactTrap(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="hidden"
+                />
                 <div className="p-6 flex flex-col gap-5">
                   {contactError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} className="text-red-500 shrink-0" /><p className="text-xs font-bold text-red-600">{contactError}</p></div>}
                   <div className="grid grid-cols-2 gap-4">
