@@ -7,7 +7,7 @@ import {
   Bus, Shield, Lock, LogOut, CheckSquare, XSquare,
   Inbox, LayoutDashboard, BadgeCheck, Ban, RefreshCw, AlertCircle,
   Send, PlusCircle, Search, Filter, Star, Zap, Users, TrendingUp,
-  FileText, HelpCircle, ChevronDown,
+  FileText, HelpCircle, ChevronDown, Trash2,
 } from "lucide-react";
 import logo from "./logo.svg";
 
@@ -115,6 +115,13 @@ async function updatePostStatus(id: string, status: ReviewStatus, adminToken: st
   }, adminToken);
 }
 
+async function deletePost(id: string, adminToken: string) {
+  await supabaseRequest(`/rest/v1/posts?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  }, adminToken);
+}
+
 function shouldBlockSpam(trapValue: string, formStartedAt: number, cooldownKey: string) {
   if (trapValue.trim()) return "Submission blocked.";
   if (Date.now() - formStartedAt < MIN_FORM_TIME_MS) return "Please take a moment before submitting.";
@@ -161,6 +168,18 @@ function formatAccommodationPrice(value: string) {
   if (price.includes("$") || /contact|ask|free|budget/i.test(price)) return price;
   if (/^\d+(\.\d{1,2})?(\/\w+)?$/i.test(price)) return `$${price}`;
   return price;
+}
+
+function getPostImages(details: Record<string, string>) {
+  const images: string[] = [];
+  if (details.Images) {
+    try {
+      const parsed = JSON.parse(details.Images);
+      if (Array.isArray(parsed)) images.push(...parsed.filter((src): src is string => typeof src === "string" && src.startsWith("data:image/")));
+    } catch {}
+  }
+  if (details.Image && !images.includes(details.Image)) images.unshift(details.Image);
+  return images.slice(0, 5);
 }
 
 function compressImage(file: File) {
@@ -731,9 +750,15 @@ function AccommodationPage({ navigateSubmit, approvedAccommodation }: { navigate
             {filtered.map((listing) => {
               const area = listing.details.Area || "Ottawa";
               const beds = listing.details.Beds || "Room";
+              const images = getPostImages(listing.details);
               return (
               <div key={listing.id} className="motion-card group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col">
-                {listing.details.Image && <img src={listing.details.Image} alt={`${area} accommodation`} className="h-40 w-full object-cover bg-gray-100" />}
+                {images.length > 0 && (
+                  <div className="relative">
+                    <img src={images[0]} alt={`${area} accommodation`} className="h-40 w-full object-cover bg-gray-100" />
+                    {images.length > 1 && <span className="absolute right-2 top-2 rounded bg-black/70 px-2 py-1 text-[10px] font-black text-white">+{images.length - 1} photos</span>}
+                  </div>
+                )}
                 <div className="p-5 flex flex-col flex-1">
                 <Tag color={typeTag[listing.details.Type] || "gray"}>{listing.details.Type || "Listing"}</Tag>
                 <div className="mt-4 text-2xl font-black text-[#1a1a1a]">{formatAccommodationPrice(listing.details.Price || "") || "Contact"}</div>
@@ -910,7 +935,7 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
   const [newsDetails, setNewsDetails] = useState(""); const [newsSource, setNewsSource] = useState("");
   const [roomType, setRoomType] = useState("Room Available"); const [roomPrice, setRoomPrice] = useState("");
   const [roomArea, setRoomArea] = useState(""); const [roomDetails, setRoomDetails] = useState(""); const [roomContact, setRoomContact] = useState("");
-  const [roomImage, setRoomImage] = useState("");
+  const [roomImages, setRoomImages] = useState<string[]>([]);
   const [confessionCategory, setConfessionCategory] = useState("Transit"); const [confessionText, setConfessionText] = useState("");
   const [resourceName, setResourceName] = useState(""); const [resourceCategory, setResourceCategory] = useState("Student Help");
   const [resourceDescription, setResourceDescription] = useState(""); const [resourceContact, setResourceContact] = useState("");
@@ -936,21 +961,23 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
 
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
 
-  const handleRoomImage = async (file?: File) => {
+  const handleRoomImages = async (files?: FileList | null) => {
     setSubmitError("");
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    const selectedFiles = Array.from(files || []).slice(0, 5);
+    if (selectedFiles.length === 0) return;
+    if (selectedFiles.some(file => !file.type.startsWith("image/"))) {
       setSubmitError("Please upload an image file.");
       return;
     }
-    if (file.size > 6 * 1024 * 1024) {
-      setSubmitError("Image must be 6MB or smaller.");
+    if (selectedFiles.some(file => file.size > 6 * 1024 * 1024)) {
+      setSubmitError("Each image must be 6MB or smaller.");
       return;
     }
     try {
-      setRoomImage(await compressImage(file));
+      const compressed = await Promise.all(selectedFiles.map(file => compressImage(file)));
+      setRoomImages(compressed);
     } catch {
-      setSubmitError("Image could not be processed. Please try another photo.");
+      setSubmitError("Images could not be processed. Please try different photos.");
     }
   };
 
@@ -1015,8 +1042,8 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
       setNewsHeadline(""); setNewsCategory("Transit"); setNewsDetails(""); setNewsSource("");
     } else if (tab === "accommodation") {
       const suspicious = ["deposit before viewing", "e-transfer", "wire transfer", "send money", "keys by mail", "western union", "crypto", "gift card", "application fee", "viewing fee"].some(kw => [roomDetails, roomContact].join(" ").toLowerCase().includes(kw));
-      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} · ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: formatAccommodationPrice(roomPrice), Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact, Image: roomImage } });
-      setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact(""); setRoomImage("");
+      await onSubmitPost({ id: `a${Date.now()}`, type: "accommodation", title: `${roomType} - ${roomArea || "Ottawa"}`, submittedAt: now(), status: "pending", flagged: suspicious, details: { Type: roomType, Price: formatAccommodationPrice(roomPrice), Area: roomArea, Beds: roomType, Detail: roomDetails, Available: "Ask poster", Contact: roomContact, Image: roomImages[0] || "", Images: JSON.stringify(roomImages) } });
+      setRoomType("Room Available"); setRoomPrice(""); setRoomArea(""); setRoomDetails(""); setRoomContact(""); setRoomImages([]);
     } else if (tab === "confession") {
       const unsafe = ["phone", "address", "full name", "kill", "dox", "instagram is", "snapchat is", "works at", "lives at"].some(kw => confessionText.toLowerCase().includes(kw));
       await onSubmitPost({ id: `c${Date.now()}`, type: "confession", title: "Anonymous Confession", submittedAt: now(), status: "pending", flagged: unsafe, details: { Category: confessionCategory, Text: confessionText } });
@@ -1125,21 +1152,34 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
                 <FF label="Details *" type="textarea" placeholder="Describe the room, rules, utilities, availability date..." value={roomDetails} onChange={setRoomDetails} />
                 <FF label="Contact (optional)" placeholder="Email or phone" value={roomContact} onChange={setRoomContact} />
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold text-gray-500 font-mono uppercase tracking-wider">Photo (optional)</label>
+                  <label className="text-[11px] font-bold text-gray-500 font-mono uppercase tracking-wider">Photos (optional)</label>
                   <label className="border border-dashed border-gray-300 rounded-xl bg-[#f8f8f8] hover:bg-white transition-colors cursor-pointer p-4 flex flex-col gap-3">
-                    {roomImage ? (
-                      <img src={roomImage} alt="Accommodation preview" className="h-48 w-full object-cover rounded-lg border border-gray-200 bg-white" />
+                    {roomImages.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {roomImages.map((src, index) => (
+                          <div key={src.slice(0, 48)} className="relative">
+                            <img src={src} alt={`Accommodation preview ${index + 1}`} className="h-32 w-full object-cover rounded-lg border border-gray-200 bg-white" />
+                            <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-black text-white">{index + 1}</span>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="h-28 rounded-lg border border-gray-200 bg-white flex flex-col items-center justify-center text-center">
                         <Building2 size={22} className="text-gray-300 mb-2" />
-                        <p className="text-xs font-black text-gray-500">Upload a room photo</p>
-                        <p className="text-[11px] text-gray-400 mt-1">JPG or PNG, up to 6MB</p>
+                        <p className="text-xs font-black text-gray-500">Upload room photos</p>
+                        <p className="text-[11px] text-gray-400 mt-1">Up to 5 photos, 6MB each</p>
                       </div>
                     )}
-                    <input type="file" accept="image/*" className="hidden" onChange={e => void handleRoomImage(e.target.files?.[0])} />
-                    <span className="text-xs font-bold text-gray-500">{roomImage ? "Change photo" : "Choose photo"}</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={e => void handleRoomImages(e.target.files)} />
+                    <span className="text-xs font-bold text-gray-500">{roomImages.length > 0 ? "Change photos" : "Choose photos"}</span>
                   </label>
-                  {roomImage && <button type="button" onClick={() => setRoomImage("")} className="text-left text-xs font-bold text-red-500 hover:text-red-600 cursor-pointer">Remove photo</button>}
+                  {roomImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {roomImages.map((src, index) => (
+                        <button key={`remove-${src.slice(0, 36)}`} type="button" onClick={() => setRoomImages(images => images.filter((_, i) => i !== index))} className="text-xs font-bold text-red-500 hover:text-red-600 cursor-pointer">Remove photo {index + 1}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>)}
               {tab === "confession" && (<>
@@ -1470,7 +1510,7 @@ function AdminLogin({ onLogin, onClose }: { onLogin: (token: string) => void; on
 
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; onDecide: (id: string, status: "approved" | "rejected") => Promise<void> | void; onLogout: () => void }) {
+function AdminDashboard({ posts, onDecide, onDelete, onLogout }: { posts: ReviewPost[]; onDecide: (id: string, status: "approved" | "rejected") => Promise<void> | void; onDelete: (id: string) => Promise<void> | void; onLogout: () => void }) {
   const [view, setView] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [typeFilter, setTypeFilter] = useState<PostCategory | "all">("all");
   const [selected, setSelected] = useState<ReviewPost | null>(null);
@@ -1478,6 +1518,15 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
   const decide = async (id: string, status: "approved" | "rejected") => { await onDecide(id, status); setSelected(null); showToast(status === "approved" ? "Post approved - now live on the site." : "Post rejected and removed."); };
+  const remove = async (id: string) => {
+    try {
+      await onDelete(id);
+      setSelected(null);
+      showToast("Post deleted permanently.");
+    } catch {
+      showToast("Delete failed. Make sure the Supabase delete policy is applied.");
+    }
+  };
 
   const filtered = posts.filter(p => (view === "all" || p.status === view) && (typeFilter === "all" || p.type === typeFilter));
   const counts = { pending: posts.filter(p => p.status === "pending").length, approved: posts.filter(p => p.status === "approved").length, rejected: posts.filter(p => p.status === "rejected").length, flagged: posts.filter(p => p.flagged && p.status === "pending").length };
@@ -1548,7 +1597,7 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
                     {post.flagged && <span className="flex items-center gap-1 text-[10px] font-black font-mono text-red-600 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded"><AlertTriangle size={9} /> FLAGGED</span>}
                   </div>
                   <p className="text-xs font-bold text-gray-400 font-mono">Submitted: {post.submittedAt}</p>
-                  {Object.entries(post.details).filter(([k]) => k !== "Image").slice(0, 2).map(([k, v]) => v && <p key={k} className="text-xs text-gray-500 font-medium mt-0.5"><span className="text-gray-400 font-bold">{k}:</span> {v}</p>)}
+                  {Object.entries(post.details).filter(([k]) => k !== "Image" && k !== "Images").slice(0, 2).map(([k, v]) => v && <p key={k} className="text-xs text-gray-500 font-medium mt-0.5"><span className="text-gray-400 font-bold">{k}:</span> {v}</p>)}
                 </div>
                 <div className="shrink-0"><StatusBadge status={post.status} /></div>
                 <ChevronRight size={15} className="text-gray-300 shrink-0 mt-1" />
@@ -1574,9 +1623,15 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
             </div>
             <div className="px-6 py-5 max-h-72 overflow-y-auto">
               <p className="text-[11px] font-black font-mono uppercase tracking-widest text-gray-400 mb-3">Submission Details</p>
-              {selected.details.Image && <img src={selected.details.Image} alt="Submission upload" className="mb-4 h-48 w-full object-cover rounded-lg border border-gray-200 bg-gray-100" />}
+              {getPostImages(selected.details).length > 0 && (
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  {getPostImages(selected.details).map((src, index) => (
+                    <img key={`${selected.id}-${index}`} src={src} alt={`Submission upload ${index + 1}`} className="h-32 w-full object-cover rounded-lg border border-gray-200 bg-gray-100" />
+                  ))}
+                </div>
+              )}
               <div className="flex flex-col gap-3">
-                {Object.entries(selected.details).filter(([k]) => k !== "Image").map(([k, v]) => v && <div key={k} className="flex flex-col gap-0.5"><p className="text-[11px] font-black text-gray-400 font-mono uppercase tracking-wide">{k}</p><p className="text-sm font-medium text-[#1a1a1a] leading-relaxed">{v}</p></div>)}
+                {Object.entries(selected.details).filter(([k]) => k !== "Image" && k !== "Images").map(([k, v]) => v && <div key={k} className="flex flex-col gap-0.5"><p className="text-[11px] font-black text-gray-400 font-mono uppercase tracking-wide">{k}</p><p className="text-sm font-medium text-[#1a1a1a] leading-relaxed">{v}</p></div>)}
               </div>
             </div>
             {selected.status !== "pending" && (
@@ -1585,9 +1640,10 @@ function AdminDashboard({ posts, onDecide, onLogout }: { posts: ReviewPost[]; on
                 {selected.status === "approved" && <span className="text-xs font-black text-emerald-600 font-mono ml-1">- Live on site</span>}
               </div>
             )}
-            <div className="px-6 py-4 border-t border-gray-100 bg-white flex gap-3">
+            <div className="px-6 py-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row gap-3">
               <button onClick={() => decide(selected.id, "approved")} disabled={selected.status === "approved"} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-black hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"><CheckSquare size={15} /> Approve & Publish</button>
               <button onClick={() => decide(selected.id, "rejected")} disabled={selected.status === "rejected"} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white py-2.5 rounded-lg text-sm font-black hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"><XSquare size={15} /> Reject & Remove</button>
+              <button onClick={() => remove(selected.id)} className="flex-1 flex items-center justify-center gap-2 border border-red-200 bg-white text-red-600 py-2.5 rounded-lg text-sm font-black hover:bg-red-50 transition-colors cursor-pointer"><Trash2 size={15} /> Delete</button>
             </div>
           </div>
         </div>
@@ -1649,6 +1705,13 @@ export default function App() {
     setPosts(prev => prev.map(post => post.id === id ? { ...post, status } : post));
   }, [adminToken]);
 
+  const handleDelete = useCallback(async (id: string) => {
+    if (HAS_SUPABASE && adminToken) {
+      await deletePost(id, adminToken);
+    }
+    setPosts(prev => prev.filter(post => post.id !== id));
+  }, [adminToken]);
+
   const closeAdmin = useCallback(() => {
     setAdminMode("off");
     setAdminToken("");
@@ -1695,7 +1758,7 @@ export default function App() {
   }
 
   if (adminMode === "dashboard" && adminToken) {
-    return <AdminDashboard posts={posts} onDecide={handleDecide} onLogout={closeAdmin} />;
+    return <AdminDashboard posts={posts} onDecide={handleDecide} onDelete={handleDelete} onLogout={closeAdmin} />;
   }
 
   const navigate = (p: Page) => {

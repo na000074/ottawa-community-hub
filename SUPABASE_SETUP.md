@@ -83,6 +83,7 @@ drop policy if exists "Anyone can create pending posts" on public.posts;
 drop policy if exists "Anyone can read approved posts" on public.posts;
 drop policy if exists "Admins can read all posts" on public.posts;
 drop policy if exists "Admins can update review status" on public.posts;
+drop policy if exists "Admins can delete posts" on public.posts;
 
 create policy "Admins can read admin users"
 on public.admin_users
@@ -120,6 +121,12 @@ with check (
   public.is_admin()
   and status in ('pending', 'approved', 'rejected')
 );
+
+create policy "Admins can delete posts"
+on public.posts
+for delete
+to authenticated
+using (public.is_admin());
 ```
 
 ## Create The Admin User
