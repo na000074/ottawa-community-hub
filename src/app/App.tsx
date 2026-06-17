@@ -271,87 +271,6 @@ const NAV_LINKS: { label: string; page: Page }[] = [
 const HERO_IMAGE = "https://images.unsplash.com/photo-1760140410902-e9e6d77fe7e5?w=1600&h=900&fit=crop&auto=format";
 const OTTAWA_VIDEO = "https://upload.wikimedia.org/wikipedia/commons/2/2a/Ottawa%2C_Canada%27s_Capital_City_%281938%29.ogg";
 
-function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavigate: (page: Page, tab?: SubmitTab) => void }) {
-  const links: Array<{ label: string; sub: string; page: Page; tab?: SubmitTab; icon: React.ElementType }> = [
-    { label: "News", sub: "Local updates", page: "news", icon: Newspaper },
-    { label: "Rooms", sub: "Accommodation", page: "accommodation", icon: Building2 },
-    { label: "Jobs", sub: "Hiring posts", page: "jobs", icon: Briefcase },
-    { label: "Confessions", sub: "Community voices", page: "confessions", icon: MessageCircle },
-    { label: "Submit", sub: "Post for review", page: "submit", tab: "news", icon: Send },
-  ];
-
-  return (
-    <div className="intro-screen fixed inset-0 z-[100] overflow-x-hidden overflow-y-auto bg-[#111] text-white">
-      <video className="intro-video absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
-        <source src={OTTAWA_VIDEO} type="video/ogg" />
-      </video>
-      <div className="intro-parliament-still absolute inset-0" aria-hidden="true" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#081411]/75 via-[#10251f]/50 to-[#060908]/95" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(245,231,196,.20),transparent_28%),linear-gradient(90deg,rgba(20,184,166,.20),transparent_28%,transparent_72%,rgba(197,157,67,.18))]" />
-      <div className="absolute inset-0 intro-grid opacity-40" />
-      <div className="intro-scan absolute left-0 right-0 top-0 h-px bg-white/70" aria-hidden="true" />
-      <div className="intro-edge intro-edge-tl" aria-hidden="true" />
-      <div className="intro-edge intro-edge-br" aria-hidden="true" />
-      <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-8">
-        <div className="intro-panel w-full max-w-6xl">
-          <div className="intro-kicker mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-white/70 backdrop-blur-md font-mono">
-            <span className="h-1.5 w-1.5 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,.9)]" />
-            Ottawa, Ontario
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <div className="intro-mark mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-2xl md:h-24 md:w-24">
-              <img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" />
-            </div>
-            <div className="intro-title-wrap relative">
-              <span className="intro-ghost-text absolute inset-x-0 -top-10 text-7xl font-black text-white/[.045] md:-top-20 md:text-[9rem]" aria-hidden="true">OCH</span>
-              <p className="intro-title-line mb-3 text-[11px] font-bold uppercase tracking-[0.35em] text-white/60 font-mono">Ottawa Confession</p>
-              <h2 className="intro-title max-w-4xl text-4xl font-black leading-tight md:text-6xl lg:text-7xl" style={{ fontFamily: "Merriweather, serif" }}>
-                <span>Ottawa</span> <span>Community</span> <span>Hub</span>
-              </h2>
-            </div>
-            <p className="intro-copy mt-5 max-w-2xl text-sm leading-relaxed text-white/75 md:text-base">Parliament views, local posts, rooms, jobs, resources, and real community updates for people living in Ottawa.</p>
-          </div>
-
-          <div className="intro-metrics mx-auto mt-7 grid max-w-2xl grid-cols-3 overflow-hidden rounded-xl border border-white/15 bg-black/25 backdrop-blur-md">
-            {[
-              ["News", "Live"],
-              ["Rooms", "Review"],
-              ["Jobs", "Local"],
-            ].map(([label, value]) => (
-              <div key={label} className="border-white/10 px-4 py-3 text-center [&:not(:last-child)]:border-r">
-                <p className="text-lg font-black text-white">{value}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/45 font-mono">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="intro-progress mx-auto mt-7 h-1 max-w-lg overflow-hidden rounded-full bg-white/10">
-            <span className="block h-full rounded-full bg-gradient-to-r from-teal-300 via-white to-amber-300" />
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {links.map(({ label, sub, page, tab, icon: Icon }) => (
-              <button key={label} onClick={() => onNavigate(page, tab)} className="intro-link group rounded-xl border border-white/15 bg-white/10 p-4 text-left backdrop-blur-md transition-colors hover:border-white/35 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70">
-                <Icon size={18} className="mb-3 text-white/80 transition-transform group-hover:scale-110" />
-                <span className="block text-sm font-black">{label}</span>
-                <span className="mt-1 block text-xs text-white/55">{sub}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <button onClick={onEnter} className="w-full rounded bg-white px-7 py-3 text-sm font-black text-[#151515] shadow-xl transition-transform hover:-translate-y-0.5 sm:w-auto">Enter Website</button>
-            <button onClick={() => onNavigate("submit", "confession")} className="w-full rounded border border-white/25 px-7 py-3 text-sm font-black text-white transition-colors hover:bg-white/10 sm:w-auto">Post Confession</button>
-          </div>
-        </div>
-      </div>
-      <div className="intro-skyline absolute bottom-0 left-0 right-0 z-0 h-24 opacity-70" aria-hidden="true">
-        <span className="h-10" /><span className="h-16" /><span className="h-12" /><span className="h-20" /><span className="h-14" /><span className="h-24" /><span className="h-11" /><span className="h-16" /><span className="h-14" /><span className="h-20" />
-      </div>
-    </div>
-  );
-}
-
 function Navbar({ current, navigate, transparent }: { current: Page; navigate: (p: Page) => void; transparent: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -480,28 +399,6 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#111c17] to-transparent" />
-      </section>
-
-      {/* Quick Access */}
-      <section className="bg-[#111c17] py-14 border-b border-[#22382f]">
-        <div className="max-w-7xl mx-auto px-4">
-          <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-[#d8bd75] mb-6 text-center">Explore the Hub</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: Newspaper, label: "Ottawa News", sub: "Local updates, transit, events", color: "blue" as const, page: "news" as Page },
-              { icon: Building2, label: "Accommodation", sub: "Rooms, rentals, roommates", color: "green" as const, page: "accommodation" as Page },
-              { icon: Briefcase, label: "Jobs", sub: "Part-time, student, local hiring", color: "orange" as const, page: "jobs" as Page },
-              { icon: MessageCircle, label: "Confessions", sub: "Anonymous community voices", color: "gray" as const, page: "confessions" as Page },
-            ].map(({ icon: Icon, label, sub, color, page }) => (
-              <button key={label} onClick={() => navigate(page)} className="motion-card group bg-white/10 border border-white/15 rounded-xl p-5 text-left hover:bg-white/15 hover:shadow-md hover:border-white/30 transition-all cursor-pointer">
-                <div className="mb-3"><Tag color={color}>{label}</Tag></div>
-                <Icon size={22} className="text-white/50 mb-2" />
-                <p className="text-xs text-white/60 leading-relaxed">{sub}</p>
-                <div className="mt-4 flex items-center gap-1 text-xs text-white/35 group-hover:text-white/75 transition-colors font-bold">Browse <ChevronRight size={12} /></div>
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Latest News */}
@@ -1708,13 +1605,6 @@ export default function App() {
   const [adminMode, setAdminMode] = useState<"off" | "login" | "dashboard">("off");
   const [adminToken, setAdminToken] = useState("");
   const [submitTab, setSubmitTab] = useState<SubmitTab>("job");
-  const [showIntro, setShowIntro] = useState(() => {
-    try {
-      return sessionStorage.getItem("och_intro_seen") !== "1";
-    } catch {
-      return true;
-    }
-  });
   const [posts, setPosts] = useState<ReviewPost[]>(() => {
     try {
       const saved = localStorage.getItem("och_posts_v2");
@@ -1818,24 +1708,11 @@ export default function App() {
     setPage("submit");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const closeIntro = () => {
-    setShowIntro(false);
-    try { sessionStorage.setItem("och_intro_seen", "1"); } catch {}
-  };
-  const introNavigate = (targetPage: Page, tab?: SubmitTab) => {
-    closeIntro();
-    if (targetPage === "submit") {
-      navigateSubmit(tab || "job");
-      return;
-    }
-    navigate(targetPage);
-  };
   const isHeroPage = page === "home";
   const transparent = isHeroPage && !scrolled;
 
   return (
     <div className="site-shell min-h-screen bg-[#f3ecdf] flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
-      {showIntro && <IntroExperience onEnter={closeIntro} onNavigate={introNavigate} />}
       <div className={isHeroPage ? "absolute top-0 left-0 right-0 z-50" : ""}>
         <Navbar current={page} navigate={navigate} transparent={transparent} />
       </div>
