@@ -2,4 +2,4 @@ This Figma Make file includes components from [shadcn/ui](https://ui.shadcn.com/
 
 This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
 
-Homepage Ottawa video: ["Tour-Ottawa-Bank of Montreal"](https://commons.wikimedia.org/wiki/File:Tour-Ottawa-Bank_of_Montreal.webm) by Sandra Cohen-Rose and Colin Rose, used under [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/).
+Homepage Ottawa video: ["Ottawa, Canada's Capital City (1938)"](https://commons.wikimedia.org/wiki/File:Ottawa,_Canada%27s_Capital_City_(1938).ogg) by Canadian Government Motion Picture Bureau, public domain via Wikimedia Commons.

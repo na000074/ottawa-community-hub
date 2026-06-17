@@ -220,13 +220,13 @@ function BtnOutlineHero({ children, onClick }: { children: React.ReactNode; onCl
 
 function PageHeader({ eyebrow, title, sub, children }: { eyebrow: string; title: string; sub?: string; children?: React.ReactNode }) {
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-[#f3ecdf] border-b border-[#d9cbb7]">
       <div className="max-w-7xl mx-auto px-4 py-10 md:py-14">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-gray-400 mb-3">{eyebrow}</p>
-            <h1 className="text-3xl md:text-4xl font-black text-[#1a1a1a] leading-tight" style={{ fontFamily: "Merriweather, serif" }}>{title}</h1>
-            {sub && <p className="mt-3 text-gray-500 text-sm md:text-base max-w-xl leading-relaxed">{sub}</p>}
+            <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#9a7a3f] mb-3">{eyebrow}</p>
+            <h1 className="text-3xl md:text-4xl font-black text-[#14201b] leading-tight" style={{ fontFamily: "Merriweather, serif" }}>{title}</h1>
+            {sub && <p className="mt-3 text-[#5f675f] text-sm md:text-base max-w-xl leading-relaxed">{sub}</p>}
           </div>
           {children && <div className="shrink-0">{children}</div>}
         </div>
@@ -239,9 +239,9 @@ function SectionTitle({ eyebrow, title, sub }: { eyebrow?: string; title: string
   return (
     <div className="mb-8">
       {eyebrow && <p className="text-[11px] font-mono font-bold uppercase tracking-widest text-gray-400 mb-2">{eyebrow}</p>}
-      <h2 className="text-2xl md:text-[28px] font-black text-[#1a1a1a] leading-tight" style={{ fontFamily: "Merriweather, serif" }}>{title}</h2>
+      <h2 className="text-2xl md:text-[28px] font-black text-[#14201b] leading-tight" style={{ fontFamily: "Merriweather, serif" }}>{title}</h2>
       {sub && <p className="mt-2 text-gray-500 text-sm max-w-lg leading-relaxed">{sub}</p>}
-      <div className="w-8 h-0.5 bg-gray-300 mt-4" />
+      <div className="w-8 h-0.5 bg-[#c59d43] mt-4" />
     </div>
   );
 }
@@ -269,7 +269,7 @@ const NAV_LINKS: { label: string; page: Page }[] = [
   { label: "Submit", page: "submit" }, { label: "Contact", page: "contact" },
 ];
 const HERO_IMAGE = "https://images.unsplash.com/photo-1760140410902-e9e6d77fe7e5?w=1600&h=900&fit=crop&auto=format";
-const OTTAWA_VIDEO = "https://upload.wikimedia.org/wikipedia/commons/6/66/Tour-Ottawa-Bank_of_Montreal.webm";
+const OTTAWA_VIDEO = "https://upload.wikimedia.org/wikipedia/commons/2/2a/Ottawa%2C_Canada%27s_Capital_City_%281938%29.ogg";
 
 function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavigate: (page: Page, tab?: SubmitTab) => void }) {
   const links: Array<{ label: string; sub: string; page: Page; tab?: SubmitTab; icon: React.ElementType }> = [
@@ -283,11 +283,11 @@ function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavig
   return (
     <div className="intro-screen fixed inset-0 z-[100] overflow-x-hidden overflow-y-auto bg-[#111] text-white">
       <video className="intro-video absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
-        <source src={OTTAWA_VIDEO} type="video/webm" />
+        <source src={OTTAWA_VIDEO} type="video/ogg" />
       </video>
       <div className="intro-parliament-still absolute inset-0" aria-hidden="true" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/95" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(255,255,255,.20),transparent_28%),linear-gradient(90deg,rgba(45,212,191,.18),transparent_28%,transparent_72%,rgba(245,158,11,.14))]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#081411]/75 via-[#10251f]/50 to-[#060908]/95" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(245,231,196,.20),transparent_28%),linear-gradient(90deg,rgba(20,184,166,.20),transparent_28%,transparent_72%,rgba(197,157,67,.18))]" />
       <div className="absolute inset-0 intro-grid opacity-40" />
       <div className="intro-scan absolute left-0 right-0 top-0 h-px bg-white/70" aria-hidden="true" />
       <div className="intro-edge intro-edge-tl" aria-hidden="true" />
@@ -355,7 +355,7 @@ function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavig
 function Navbar({ current, navigate, transparent }: { current: Page; navigate: (p: Page) => void; transparent: boolean }) {
   const [open, setOpen] = useState(false);
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${transparent ? "bg-transparent border-transparent" : "bg-white border-b border-gray-200 shadow-sm"}`}>
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${transparent ? "bg-transparent border-transparent" : "bg-[#f3ecdf]/95 border-b border-[#d9cbb7] shadow-sm backdrop-blur-md"}`}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -439,9 +439,10 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       {/* Hero */}
       <section className="relative min-h-[92vh] flex flex-col justify-end bg-gray-700">
         <video className="hero-image hero-video absolute inset-0 w-full h-full object-cover object-center" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
-          <source src={OTTAWA_VIDEO} type="video/webm" />
+          <source src={OTTAWA_VIDEO} type="video/ogg" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#081411]/70 via-[#10251f]/45 to-[#060908]/90" />
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(20,184,166,.24),transparent_35%,rgba(197,157,67,.16)_78%)]" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 pb-16 pt-24 w-full">
           <div className="grid lg:grid-cols-2 gap-12 items-end">
             <div>
@@ -478,13 +479,13 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#f6f0e7] to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#111c17] to-transparent" />
       </section>
 
       {/* Quick Access */}
-      <section className="bg-[#f6f0e7] py-14 border-b border-[#e5dacb]">
+      <section className="bg-[#111c17] py-14 border-b border-[#22382f]">
         <div className="max-w-7xl mx-auto px-4">
-          <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-6 text-center">Explore the Hub</p>
+          <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-[#d8bd75] mb-6 text-center">Explore the Hub</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { icon: Newspaper, label: "Ottawa News", sub: "Local updates, transit, events", color: "blue" as const, page: "news" as Page },
@@ -492,11 +493,11 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
               { icon: Briefcase, label: "Jobs", sub: "Part-time, student, local hiring", color: "orange" as const, page: "jobs" as Page },
               { icon: MessageCircle, label: "Confessions", sub: "Anonymous community voices", color: "gray" as const, page: "confessions" as Page },
             ].map(({ icon: Icon, label, sub, color, page }) => (
-              <button key={label} onClick={() => navigate(page)} className="motion-card group bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
+              <button key={label} onClick={() => navigate(page)} className="motion-card group bg-white/10 border border-white/15 rounded-xl p-5 text-left hover:bg-white/15 hover:shadow-md hover:border-white/30 transition-all cursor-pointer">
                 <div className="mb-3"><Tag color={color}>{label}</Tag></div>
-                <Icon size={22} className="text-gray-300 mb-2" />
-                <p className="text-xs text-gray-400 leading-relaxed">{sub}</p>
-                <div className="mt-4 flex items-center gap-1 text-xs text-gray-300 group-hover:text-gray-500 transition-colors font-bold">Browse <ChevronRight size={12} /></div>
+                <Icon size={22} className="text-white/50 mb-2" />
+                <p className="text-xs text-white/60 leading-relaxed">{sub}</p>
+                <div className="mt-4 flex items-center gap-1 text-xs text-white/35 group-hover:text-white/75 transition-colors font-bold">Browse <ChevronRight size={12} /></div>
               </button>
             ))}
           </div>
@@ -535,7 +536,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       </section>
 
       {/* Jobs preview */}
-      <section className="bg-[#f3f7f5] py-14 border-b border-[#dbe7e1]">
+      <section className="bg-[#efe5d5] py-14 border-b border-[#d9cbb7]">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-end justify-between">
             <SectionTitle eyebrow="Employment" title="Jobs in Ottawa" sub="Community-submitted, admin-verified job listings." />
@@ -555,7 +556,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       </section>
 
       {/* Confessions small */}
-      <section className="bg-[#f7f2ec] py-14 border-b border-[#e5dacb]">
+      <section className="bg-[#dfe8df] py-14 border-b border-[#c7d8cd]">
         <div className="max-w-7xl mx-auto px-4">
           <SectionTitle eyebrow="Community" title="Community Confessions" sub="Anonymous thoughts, stories, and opinions from people around Ottawa." />
           <div className="grid md:grid-cols-3 gap-4 mb-6">
@@ -1833,7 +1834,7 @@ export default function App() {
   const transparent = isHeroPage && !scrolled;
 
   return (
-    <div className="site-shell min-h-screen bg-[#f6f0e7] flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="site-shell min-h-screen bg-[#f3ecdf] flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
       {showIntro && <IntroExperience onEnter={closeIntro} onNavigate={introNavigate} />}
       <div className={isHeroPage ? "absolute top-0 left-0 right-0 z-50" : ""}>
         <Navbar current={page} navigate={navigate} transparent={transparent} />
