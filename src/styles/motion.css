@@ -31,6 +31,42 @@ html {
   }
 }
 
+@keyframes intro-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(.98);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes intro-mark-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(.8) rotate(-4deg);
+  }
+  70% {
+    transform: translateY(-2px) scale(1.04) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+@keyframes intro-grid-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 42px 42px;
+  }
+}
+
 .site-shell main > div {
   animation: page-enter 520ms cubic-bezier(.2, .8, .2, 1) both;
 }
@@ -74,6 +110,41 @@ html {
   animation: soft-float 5s ease-in-out infinite;
 }
 
+.hero-video,
+.intro-video {
+  background: #111 url("https://images.unsplash.com/photo-1760140410902-e9e6d77fe7e5?w=1600&h=900&fit=crop&auto=format") center / cover no-repeat;
+}
+
+.intro-screen {
+  isolation: isolate;
+}
+
+.intro-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  animation: intro-grid-drift 14s linear infinite;
+}
+
+.intro-panel {
+  animation: intro-reveal 760ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.intro-mark {
+  animation: intro-mark-pop 820ms cubic-bezier(.2, .8, .2, 1) 120ms both, soft-float 5s ease-in-out 1s infinite;
+}
+
+.intro-link {
+  animation: intro-reveal 620ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.intro-link:nth-child(1) { animation-delay: 160ms; }
+.intro-link:nth-child(2) { animation-delay: 220ms; }
+.intro-link:nth-child(3) { animation-delay: 280ms; }
+.intro-link:nth-child(4) { animation-delay: 340ms; }
+.intro-link:nth-child(5) { animation-delay: 400ms; }
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -81,7 +152,11 @@ html {
 
   .site-shell main > div,
   .hero-image,
-  .logo-float {
+  .logo-float,
+  .intro-grid,
+  .intro-panel,
+  .intro-mark,
+  .intro-link {
     animation: none;
   }
 

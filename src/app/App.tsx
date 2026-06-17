@@ -269,6 +269,54 @@ const NAV_LINKS: { label: string; page: Page }[] = [
   { label: "Submit", page: "submit" }, { label: "Contact", page: "contact" },
 ];
 const HERO_IMAGE = "https://images.unsplash.com/photo-1760140410902-e9e6d77fe7e5?w=1600&h=900&fit=crop&auto=format";
+const OTTAWA_VIDEO = "https://upload.wikimedia.org/wikipedia/commons/6/66/Tour-Ottawa-Bank_of_Montreal.webm";
+
+function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavigate: (page: Page, tab?: SubmitTab) => void }) {
+  const links: Array<{ label: string; sub: string; page: Page; tab?: SubmitTab; icon: React.ElementType }> = [
+    { label: "News", sub: "Local updates", page: "news", icon: Newspaper },
+    { label: "Rooms", sub: "Accommodation", page: "accommodation", icon: Building2 },
+    { label: "Jobs", sub: "Hiring posts", page: "jobs", icon: Briefcase },
+    { label: "Confessions", sub: "Community voices", page: "confessions", icon: MessageCircle },
+    { label: "Submit", sub: "Post for review", page: "submit", tab: "news", icon: Send },
+  ];
+
+  return (
+    <div className="intro-screen fixed inset-0 z-[100] overflow-hidden bg-[#111] text-white">
+      <video className="intro-video absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
+        <source src={OTTAWA_VIDEO} type="video/webm" />
+      </video>
+      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/55 to-black/90" />
+      <div className="absolute inset-0 intro-grid opacity-40" />
+      <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-8">
+        <div className="intro-panel w-full max-w-5xl">
+          <div className="flex flex-col items-center text-center">
+            <div className="intro-mark mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-2xl md:h-24 md:w-24">
+              <img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" />
+            </div>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.35em] text-white/60 font-mono">Ottawa Confession</p>
+            <h2 className="max-w-3xl text-4xl font-black leading-tight md:text-6xl" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</h2>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">News, rooms, jobs, resources, and anonymous community posts for people living in Ottawa.</p>
+          </div>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {links.map(({ label, sub, page, tab, icon: Icon }) => (
+              <button key={label} onClick={() => onNavigate(page, tab)} className="intro-link group rounded-xl border border-white/15 bg-white/10 p-4 text-left backdrop-blur-md transition-colors hover:border-white/35 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70">
+                <Icon size={18} className="mb-3 text-white/80 transition-transform group-hover:scale-110" />
+                <span className="block text-sm font-black">{label}</span>
+                <span className="mt-1 block text-xs text-white/55">{sub}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <button onClick={onEnter} className="w-full rounded bg-white px-7 py-3 text-sm font-black text-[#151515] shadow-xl transition-transform hover:-translate-y-0.5 sm:w-auto">Enter Website</button>
+            <button onClick={() => onNavigate("submit", "confession")} className="w-full rounded border border-white/25 px-7 py-3 text-sm font-black text-white transition-colors hover:bg-white/10 sm:w-auto">Post Confession</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Navbar({ current, navigate, transparent }: { current: Page; navigate: (p: Page) => void; transparent: boolean }) {
   const [open, setOpen] = useState(false);
@@ -356,7 +404,9 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
     <div>
       {/* Hero */}
       <section className="relative min-h-[92vh] flex flex-col justify-end bg-gray-700">
-        <img src={HERO_IMAGE} alt="Ottawa Parliament Hill skyline" className="hero-image absolute inset-0 w-full h-full object-cover object-center" />
+        <video className="hero-image hero-video absolute inset-0 w-full h-full object-cover object-center" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
+          <source src={OTTAWA_VIDEO} type="video/webm" />
+        </video>
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/80" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 pb-16 pt-24 w-full">
           <div className="grid lg:grid-cols-2 gap-12 items-end">
@@ -394,11 +444,11 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#f6f0e7] to-transparent" />
       </section>
 
       {/* Quick Access */}
-      <section className="bg-white py-14 border-b border-gray-100">
+      <section className="bg-[#f6f0e7] py-14 border-b border-[#e5dacb]">
         <div className="max-w-7xl mx-auto px-4">
           <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-6 text-center">Explore the Hub</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -451,7 +501,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       </section>
 
       {/* Jobs preview */}
-      <section className="bg-white py-14 border-b border-gray-100">
+      <section className="bg-[#f3f7f5] py-14 border-b border-[#dbe7e1]">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-end justify-between">
             <SectionTitle eyebrow="Employment" title="Jobs in Ottawa" sub="Community-submitted, admin-verified job listings." />
@@ -471,7 +521,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       </section>
 
       {/* Confessions small */}
-      <section className="bg-[#f8f8f8] py-14 border-b border-gray-100">
+      <section className="bg-[#f7f2ec] py-14 border-b border-[#e5dacb]">
         <div className="max-w-7xl mx-auto px-4">
           <SectionTitle eyebrow="Community" title="Community Confessions" sub="Anonymous thoughts, stories, and opinions from people around Ottawa." />
           <div className="grid md:grid-cols-3 gap-4 mb-6">
@@ -488,17 +538,17 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
       </section>
 
       {/* Submit CTA */}
-      <section className="bg-white py-16 border-b border-gray-100">
+      <section className="bg-[#151515] py-16 border-b border-black">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="bg-[#f8f8f8] border border-gray-200 rounded-2xl px-8 py-12 text-center max-w-3xl mx-auto">
-            <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-3">Contribute</p>
-            <h2 className="text-2xl md:text-3xl font-black text-[#1a1a1a] mb-3" style={{ fontFamily: "Merriweather, serif" }}>Have something useful to share with Ottawa?</h2>
-            <p className="text-gray-500 text-sm mb-8 max-w-md mx-auto leading-relaxed">Help your neighbours by sharing news, job openings, available rooms, or community resources.</p>
+          <div className="motion-card bg-white/8 border border-white/15 rounded-2xl px-8 py-12 text-center max-w-3xl mx-auto backdrop-blur-sm">
+            <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-white/45 mb-3">Contribute</p>
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-3" style={{ fontFamily: "Merriweather, serif" }}>Have something useful to share with Ottawa?</h2>
+            <p className="text-white/60 text-sm mb-8 max-w-md mx-auto leading-relaxed">Help your neighbours by sharing news, job openings, available rooms, or community resources.</p>
             <div className="flex flex-wrap justify-center gap-3">
-              <BtnDark onClick={() => navigate("submit")}>Submit News</BtnDark>
-              <BtnGhost onClick={() => navigate("submit")}>Post Accommodation</BtnGhost>
-              <BtnGhost onClick={() => navigate("submit")}>Share a Job</BtnGhost>
-              <BtnGhost onClick={() => navigate("submit")}>Send Confession</BtnGhost>
+              <BtnWhiteHero onClick={() => navigateSubmit("news")}>Submit News</BtnWhiteHero>
+              <BtnOutlineHero onClick={() => navigateSubmit("accommodation")}>Post Accommodation</BtnOutlineHero>
+              <BtnOutlineHero onClick={() => navigateSubmit("job")}>Share a Job</BtnOutlineHero>
+              <BtnOutlineHero onClick={() => navigateSubmit("confession")}>Send Confession</BtnOutlineHero>
             </div>
           </div>
         </div>
@@ -1623,6 +1673,13 @@ export default function App() {
   const [adminMode, setAdminMode] = useState<"off" | "login" | "dashboard">("off");
   const [adminToken, setAdminToken] = useState("");
   const [submitTab, setSubmitTab] = useState<SubmitTab>("job");
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return sessionStorage.getItem("och_intro_seen") !== "1";
+    } catch {
+      return true;
+    }
+  });
   const [posts, setPosts] = useState<ReviewPost[]>(() => {
     try {
       const saved = localStorage.getItem("och_posts_v2");
@@ -1726,11 +1783,24 @@ export default function App() {
     setPage("submit");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const closeIntro = () => {
+    setShowIntro(false);
+    try { sessionStorage.setItem("och_intro_seen", "1"); } catch {}
+  };
+  const introNavigate = (targetPage: Page, tab?: SubmitTab) => {
+    closeIntro();
+    if (targetPage === "submit") {
+      navigateSubmit(tab || "job");
+      return;
+    }
+    navigate(targetPage);
+  };
   const isHeroPage = page === "home";
   const transparent = isHeroPage && !scrolled;
 
   return (
-    <div className="site-shell min-h-screen bg-white flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="site-shell min-h-screen bg-[#f6f0e7] flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
+      {showIntro && <IntroExperience onEnter={closeIntro} onNavigate={introNavigate} />}
       <div className={isHeroPage ? "absolute top-0 left-0 right-0 z-50" : ""}>
         <Navbar current={page} navigate={navigate} transparent={transparent} />
       </div>
