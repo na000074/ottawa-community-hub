@@ -278,7 +278,7 @@ function Navbar({ current, navigate, transparent }: { current: Page; navigate: (
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button onClick={() => navigate("home")} className="flex items-center gap-3 cursor-pointer">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden ${transparent ? "bg-white shadow-sm" : "bg-white ring-1 ring-gray-200 shadow-sm"}`}>
+            <div className={`logo-float w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden ${transparent ? "bg-white shadow-sm" : "bg-white ring-1 ring-gray-200 shadow-sm"}`}>
               <img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" />
             </div>
             <div className="hidden sm:block text-left">
@@ -336,7 +336,7 @@ function JobCard({ job }: { job: ReviewPost }) {
   const typeColor: Record<string, "blue" | "green" | "orange" | "gray"> = { "Part-time": "orange", "Full-time": "green", "Student": "blue", "Co-op": "blue", "Flexible": "gray" };
   const jobType = job.details["Job Type"] || "Job";
   return (
-    <div className="border border-gray-200 rounded-xl p-5 bg-white hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
+    <div className="motion-card border border-gray-200 rounded-xl p-5 bg-white hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
       <div className="flex items-start justify-between gap-2 mb-3">
         <Tag color={typeColor[jobType] || "gray"}>{jobType}</Tag>
         <span className="text-xs font-bold font-mono text-gray-500 shrink-0">{job.details["Pay"] || ""}</span>
@@ -356,7 +356,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
     <div>
       {/* Hero */}
       <section className="relative min-h-[92vh] flex flex-col justify-end bg-gray-700">
-        <img src={HERO_IMAGE} alt="Ottawa Parliament Hill skyline" className="absolute inset-0 w-full h-full object-cover object-center" />
+        <img src={HERO_IMAGE} alt="Ottawa Parliament Hill skyline" className="hero-image absolute inset-0 w-full h-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/80" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 pb-16 pt-24 w-full">
           <div className="grid lg:grid-cols-2 gap-12 items-end">
@@ -384,7 +384,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
                 { icon: Briefcase, label: "Jobs", sub: `${approvedJobs.length} approved jobs`, color: "text-amber-300", bg: "bg-amber-500/10", page: "jobs" as Page },
                 { icon: BookOpen, label: "Resources", sub: "Guides & contacts", color: "text-gray-300", bg: "bg-white/10", page: "resources" as Page },
               ].map(({ icon: Icon, label, sub, color, bg, page }) => (
-                <button key={label} onClick={() => navigate(page)} className={`${bg} group text-left backdrop-blur-sm border border-white/15 rounded-xl p-5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70 transition-colors cursor-pointer`}>
+                <button key={label} onClick={() => navigate(page)} className={`hero-card ${bg} group text-left backdrop-blur-sm border border-white/15 rounded-xl p-5 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70 transition-colors cursor-pointer`}>
                   <Icon size={20} className={`${color} mb-3`} />
                   <p className="text-sm font-bold text-white mb-1">{label}</p>
                   <p className="text-xs text-white/50">{sub}</p>
@@ -408,7 +408,7 @@ function HomePage({ navigate, navigateSubmit, approvedJobs, approvedAccommodatio
               { icon: Briefcase, label: "Jobs", sub: "Part-time, student, local hiring", color: "orange" as const, page: "jobs" as Page },
               { icon: MessageCircle, label: "Confessions", sub: "Anonymous community voices", color: "gray" as const, page: "confessions" as Page },
             ].map(({ icon: Icon, label, sub, color, page }) => (
-              <button key={label} onClick={() => navigate(page)} className="group bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
+              <button key={label} onClick={() => navigate(page)} className="motion-card group bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
                 <div className="mb-3"><Tag color={color}>{label}</Tag></div>
                 <Icon size={22} className="text-gray-300 mb-2" />
                 <p className="text-xs text-gray-400 leading-relaxed">{sub}</p>
@@ -750,7 +750,7 @@ function AccommodationPage({ navigateSubmit, approvedAccommodation }: { navigate
               const area = listing.details.Area || "Ottawa";
               const beds = listing.details.Beds || "Room";
               return (
-              <div key={listing.id} className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col">
+              <div key={listing.id} className="motion-card group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer flex flex-col">
                 {listing.details.Image && <img src={listing.details.Image} alt={`${area} accommodation`} className="h-40 w-full object-cover bg-gray-100" />}
                 <div className="p-5 flex flex-col flex-1">
                 <Tag color={typeTag[listing.details.Type] || "gray"}>{listing.details.Type || "Listing"}</Tag>
@@ -889,7 +889,7 @@ function ConfessionsPage({ navigateSubmit, approvedConfessions }: { navigateSubm
         {/* Cards */}
         <div className="flex flex-col gap-4 mb-10">
           {filtered.map((c) => (
-            <div key={c.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-gray-300 hover:shadow-sm transition-all">
+            <div key={c.id} className="motion-card bg-white border border-gray-200 rounded-2xl p-6 hover:border-gray-300 hover:shadow-sm transition-all">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <Tag color={catColor[c.details.Category] || "gray"}>{c.details.Category || "General"}</Tag>
                 <button className="text-xs font-bold text-gray-300 hover:text-red-400 cursor-pointer transition-colors">❤ Support</button>
@@ -1218,7 +1218,7 @@ function ResourcesPage({ navigateSubmit }: { navigateSubmit: (tab?: SubmitTab) =
         {/* Resource cards */}
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
           {cats.map(({ label, color, icon: Icon, items }) => (
-            <div key={label} className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+            <div key={label} className="motion-card bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
               <div className="px-5 py-4 border-b border-gray-100 bg-[#f8f8f8] flex items-center gap-3">
                 <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center"><Icon size={15} className="text-gray-500" /></div>
                 <Tag color={color}>{label}</Tag>
@@ -1730,7 +1730,7 @@ export default function App() {
   const transparent = isHeroPage && !scrolled;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="site-shell min-h-screen bg-white flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
       <div className={isHeroPage ? "absolute top-0 left-0 right-0 z-50" : ""}>
         <Navbar current={page} navigate={navigate} transparent={transparent} />
       </div>
