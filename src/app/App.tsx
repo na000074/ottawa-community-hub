@@ -281,21 +281,52 @@ function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavig
   ];
 
   return (
-    <div className="intro-screen fixed inset-0 z-[100] overflow-hidden bg-[#111] text-white">
+    <div className="intro-screen fixed inset-0 z-[100] overflow-x-hidden overflow-y-auto bg-[#111] text-white">
       <video className="intro-video absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata" poster={HERO_IMAGE} aria-hidden="true">
         <source src={OTTAWA_VIDEO} type="video/webm" />
       </video>
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/55 to-black/90" />
+      <div className="intro-parliament-still absolute inset-0" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/95" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(255,255,255,.20),transparent_28%),linear-gradient(90deg,rgba(45,212,191,.18),transparent_28%,transparent_72%,rgba(245,158,11,.14))]" />
       <div className="absolute inset-0 intro-grid opacity-40" />
+      <div className="intro-scan absolute left-0 right-0 top-0 h-px bg-white/70" aria-hidden="true" />
+      <div className="intro-edge intro-edge-tl" aria-hidden="true" />
+      <div className="intro-edge intro-edge-br" aria-hidden="true" />
       <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-8">
-        <div className="intro-panel w-full max-w-5xl">
+        <div className="intro-panel w-full max-w-6xl">
+          <div className="intro-kicker mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-white/70 backdrop-blur-md font-mono">
+            <span className="h-1.5 w-1.5 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,.9)]" />
+            Ottawa, Ontario
+          </div>
           <div className="flex flex-col items-center text-center">
             <div className="intro-mark mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-2xl md:h-24 md:w-24">
               <img src={logo} alt="Ottawa Community Hub logo" className="h-full w-full" />
             </div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.35em] text-white/60 font-mono">Ottawa Confession</p>
-            <h2 className="max-w-3xl text-4xl font-black leading-tight md:text-6xl" style={{ fontFamily: "Merriweather, serif" }}>Ottawa Community Hub</h2>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">News, rooms, jobs, resources, and anonymous community posts for people living in Ottawa.</p>
+            <div className="intro-title-wrap relative">
+              <span className="intro-ghost-text absolute inset-x-0 -top-10 text-7xl font-black text-white/[.045] md:-top-20 md:text-[9rem]" aria-hidden="true">OCH</span>
+              <p className="intro-title-line mb-3 text-[11px] font-bold uppercase tracking-[0.35em] text-white/60 font-mono">Ottawa Confession</p>
+              <h2 className="intro-title max-w-4xl text-4xl font-black leading-tight md:text-6xl lg:text-7xl" style={{ fontFamily: "Merriweather, serif" }}>
+                <span>Ottawa</span> <span>Community</span> <span>Hub</span>
+              </h2>
+            </div>
+            <p className="intro-copy mt-5 max-w-2xl text-sm leading-relaxed text-white/75 md:text-base">Parliament views, local posts, rooms, jobs, resources, and real community updates for people living in Ottawa.</p>
+          </div>
+
+          <div className="intro-metrics mx-auto mt-7 grid max-w-2xl grid-cols-3 overflow-hidden rounded-xl border border-white/15 bg-black/25 backdrop-blur-md">
+            {[
+              ["News", "Live"],
+              ["Rooms", "Review"],
+              ["Jobs", "Local"],
+            ].map(([label, value]) => (
+              <div key={label} className="border-white/10 px-4 py-3 text-center [&:not(:last-child)]:border-r">
+                <p className="text-lg font-black text-white">{value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/45 font-mono">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="intro-progress mx-auto mt-7 h-1 max-w-lg overflow-hidden rounded-full bg-white/10">
+            <span className="block h-full rounded-full bg-gradient-to-r from-teal-300 via-white to-amber-300" />
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -313,6 +344,9 @@ function IntroExperience({ onEnter, onNavigate }: { onEnter: () => void; onNavig
             <button onClick={() => onNavigate("submit", "confession")} className="w-full rounded border border-white/25 px-7 py-3 text-sm font-black text-white transition-colors hover:bg-white/10 sm:w-auto">Post Confession</button>
           </div>
         </div>
+      </div>
+      <div className="intro-skyline absolute bottom-0 left-0 right-0 z-0 h-24 opacity-70" aria-hidden="true">
+        <span className="h-10" /><span className="h-16" /><span className="h-12" /><span className="h-20" /><span className="h-14" /><span className="h-24" /><span className="h-11" /><span className="h-16" /><span className="h-14" /><span className="h-20" />
       </div>
     </div>
   );
