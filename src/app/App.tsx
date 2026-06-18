@@ -32,6 +32,7 @@ const INITIAL_QUEUE: ReviewPost[] = [];
 const SUBMISSION_COOLDOWN_MS = 15000;
 const MIN_FORM_TIME_MS = 1800;
 const ADMIN_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+const MAX_ROOM_IMAGE_BYTES = 25 * 1024 * 1024;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const HAS_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -972,12 +973,15 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
       setSubmitError("Please upload an image file.");
       return;
     }
-    if (selectedFiles.some(file => file.size > 6 * 1024 * 1024)) {
-      setSubmitError("Each image must be 6MB or smaller.");
+    if (selectedFiles.some(file => file.size > MAX_ROOM_IMAGE_BYTES)) {
+      setSubmitError("Each original photo must be 25MB or smaller.");
       return;
     }
     try {
-      const compressed = await Promise.all(selectedFiles.map(file => compressImage(file)));
+      const compressed: string[] = [];
+      for (const file of selectedFiles) {
+        compressed.push(await compressImage(file));
+      }
       setRoomImages(current => [...current, ...compressed].slice(0, 5));
     } catch {
       setSubmitError("Images could not be processed. Please try different photos.");
@@ -1170,7 +1174,7 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
                       <div className="h-28 rounded-lg border border-gray-200 bg-white flex flex-col items-center justify-center text-center">
                         <Building2 size={22} className="text-gray-300 mb-2" />
                         <p className="text-xs font-black text-gray-500">Upload room photos</p>
-                        <p className="text-[11px] text-gray-400 mt-1">Up to 5 photos, 6MB each</p>
+                        <p className="text-[11px] text-gray-400 mt-1">Up to 5 photos, 25MB each</p>
                       </div>
                     )}
                     {roomImages.length < 5 && (
