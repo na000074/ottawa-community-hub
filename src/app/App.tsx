@@ -544,7 +544,9 @@ function NewsPage({ approvedNews }: { approvedNews: ReviewPost[] }) {
     const loadNews = async () => {
       setFeedStatus("loading");
       try {
-        const res = await fetch(`/news.json?updated=${Date.now()}`, { cache: "no-store" });
+        const newsUrl = new URL(`${import.meta.env.BASE_URL}news.json`, window.location.href);
+        newsUrl.searchParams.set("updated", Date.now().toString());
+        const res = await fetch(newsUrl, { cache: "no-store" });
         if (!res.ok) throw new Error("News feed unavailable");
         const data = await res.json();
         const items = Array.isArray(data.items) ? data.items : [];
@@ -963,7 +965,8 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
 
   const handleRoomImages = async (files?: FileList | null) => {
     setSubmitError("");
-    const selectedFiles = Array.from(files || []).slice(0, 5);
+    const remainingSlots = Math.max(0, 5 - roomImages.length);
+    const selectedFiles = Array.from(files || []).slice(0, remainingSlots);
     if (selectedFiles.length === 0) return;
     if (selectedFiles.some(file => !file.type.startsWith("image/"))) {
       setSubmitError("Please upload an image file.");
@@ -975,7 +978,7 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
     }
     try {
       const compressed = await Promise.all(selectedFiles.map(file => compressImage(file)));
-      setRoomImages(compressed);
+      setRoomImages(current => [...current, ...compressed].slice(0, 5));
     } catch {
       setSubmitError("Images could not be processed. Please try different photos.");
     }
@@ -1153,7 +1156,7 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
                 <FF label="Contact (optional)" placeholder="Email or phone" value={roomContact} onChange={setRoomContact} />
                 <div className="flex flex-col gap-2">
                   <label className="text-[11px] font-bold text-gray-500 font-mono uppercase tracking-wider">Photos (optional)</label>
-                  <label className="border border-dashed border-gray-300 rounded-xl bg-[#f8f8f8] hover:bg-white transition-colors cursor-pointer p-4 flex flex-col gap-3">
+                  <div className="border border-dashed border-gray-300 rounded-xl bg-[#f8f8f8] p-4 flex flex-col gap-3">
                     {roomImages.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2">
                         {roomImages.map((src, index) => (
@@ -1170,9 +1173,23 @@ function SubmitPage({ initialTab, onSubmitPost }: { initialTab: SubmitTab; onSub
                         <p className="text-[11px] text-gray-400 mt-1">Up to 5 photos, 6MB each</p>
                       </div>
                     )}
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={e => void handleRoomImages(e.target.files)} />
-                    <span className="text-xs font-bold text-gray-500">{roomImages.length > 0 ? "Change photos" : "Choose photos"}</span>
-                  </label>
+                    {roomImages.length < 5 && (
+                      <label className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-xs font-black text-[#1a1a1a] shadow-sm cursor-pointer hover:border-gray-500 transition-colors">
+                        {roomImages.length > 0 ? `Add more photos (${roomImages.length}/5)` : "Choose photos"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                          multiple
+                          className="sr-only"
+                          onChange={e => {
+                            const input = e.currentTarget;
+                            void handleRoomImages(input.files).finally(() => { input.value = ""; });
+                          }}
+                        />
+                      </label>
+                    )}
+                    {roomImages.length === 5 && <p className="text-center text-xs font-bold text-emerald-700">5 photos selected</p>}
+                  </div>
                   {roomImages.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {roomImages.map((src, index) => (
