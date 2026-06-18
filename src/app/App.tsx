@@ -8,7 +8,7 @@ import {
   Bus, Shield, Lock, LogOut, CheckSquare, XSquare,
   Inbox, LayoutDashboard, BadgeCheck, Ban, RefreshCw, AlertCircle,
   Send, PlusCircle, Search, Filter, Star, Zap, Users, TrendingUp,
-  FileText, HelpCircle, ChevronDown, Trash2, Mail, ExternalLink,
+  FileText, HelpCircle, ChevronDown, Trash2, Mail, ExternalLink, Bug, Lightbulb,
 } from "lucide-react";
 import logo from "./logo.svg";
 
@@ -1399,14 +1399,23 @@ function ResourcesPage({ navigateSubmit }: { navigateSubmit: (tab?: SubmitTab) =
 
 function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Promise<void> | void }) {
   const [sent, setSent] = useState(false);
+  const [sentAsFeedback, setSentAsFeedback] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("General Inquiry");
+  const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
   const [contactError, setContactError] = useState("");
   const [contactTrap, setContactTrap] = useState("");
   const [contactStartedAt, setContactStartedAt] = useState(Date.now());
   const now = () => { const d = new Date(); return `${d.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}`; };
+  const feedbackSubjects = ["Report Website Bug", "Suggest Website Feature", "Website Review"];
+  const isWebsiteFeedback = feedbackSubjects.includes(subject);
+  const chooseFeedback = (nextSubject: string) => {
+    setSubject(nextSubject);
+    setContactError("");
+    window.setTimeout(() => document.getElementById("website-feedback-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
 
   const go = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1417,8 +1426,8 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
       return;
     }
     const validationError =
-      firstMissing([["Name", name], ["Email", email], ["Message", message]]) ||
-      (!isEmail(email) ? "Please enter a valid email address." : "") ||
+      firstMissing(isWebsiteFeedback ? [["Message", message]] : [["Name", name], ["Email", email], ["Message", message]]) ||
+      (email && !isEmail(email) ? "Please enter a valid email address." : "") ||
       tooShort("Message", message, 20) ||
       tooLong("Name", name, 80) ||
       tooLong("Email", email, 120) ||
@@ -1435,14 +1444,21 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
         submittedAt: now(),
         status: "pending",
         flagged: subject === "Scam Report" || subject === "Report Content",
-        details: { Name: name, Email: email, Subject: subject, Message: message },
+        details: {
+          Name: name || "Anonymous",
+          Email: email || "Not provided",
+          Subject: subject,
+          Rating: rating ? `${rating}/5` : "Not provided",
+          Message: message,
+        },
       });
-      setName(""); setEmail(""); setSubject("General Inquiry"); setMessage("");
+      setSentAsFeedback(isWebsiteFeedback);
+      setName(""); setEmail(""); setSubject("General Inquiry"); setRating(0); setMessage("");
       setContactTrap("");
       markSubmitted("och_contact_last_at");
       setContactStartedAt(Date.now());
       setSent(true);
-      setTimeout(() => setSent(false), 4000);
+      setTimeout(() => { setSent(false); setSentAsFeedback(false); }, 4000);
     } catch {
       setContactError("Message could not be saved right now. Please try again.");
     }
@@ -1450,18 +1466,39 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
 
   return (
     <div>
-      <PageHeader eyebrow="Ottawa Community Hub · Contact" title="Get in Touch" sub="Questions, content reports, partnership inquiries, or feature suggestions — we'd love to hear from you." />
+      <PageHeader eyebrow="Ottawa Community Hub · Feedback & Contact" title="Help Us Improve" sub="Report a website problem, suggest a feature, leave a review, or send the team a message." />
 
       <div className="max-w-5xl mx-auto px-4 py-10">
+        <section className="mb-10">
+          <div className="mb-5">
+            <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-emerald-700 mb-2">Website Feedback</p>
+            <h2 className="text-2xl font-black text-[#1a1a1a] mb-2" style={{ fontFamily: "Merriweather, serif" }}>Found something we should improve?</h2>
+            <p className="text-sm text-gray-500 leading-relaxed">Choose a feedback type below. Your report will go directly to the admin portal for review.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { subject: "Report Website Bug", title: "Report a Bug", text: "Tell us what broke, what page you were on, and what device you used.", icon: Bug, color: "text-red-600 bg-red-50 border-red-200" },
+              { subject: "Suggest Website Feature", title: "Suggest a Feature", text: "Share an idea that could make the community hub more useful.", icon: Lightbulb, color: "text-amber-600 bg-amber-50 border-amber-200" },
+              { subject: "Website Review", title: "Review the Website", text: "Rate your experience and tell us what you like or dislike.", icon: Star, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+            ].map(({ subject: option, title, text, icon: Icon, color }) => (
+              <button key={option} type="button" onClick={() => chooseFeedback(option)} className={`text-left border rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${subject === option ? `${color} ring-2 ring-current ring-offset-2` : "bg-white border-gray-200 text-gray-700"}`}>
+                <Icon size={22} className="mb-4" />
+                <span className="block text-sm font-black text-[#1a1a1a] mb-2">{title}</span>
+                <span className="block text-xs leading-relaxed opacity-70">{text}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <div className="grid md:grid-cols-5 gap-8">
           {/* Form — wider */}
-          <div className="md:col-span-3">
-            <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-4">Send a Message</p>
+          <div id="website-feedback-form" className="md:col-span-3 scroll-mt-24">
+            <p className="text-[11px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-4">{isWebsiteFeedback ? "Send Website Feedback" : "Send a Message"}</p>
             {sent ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-12 text-center">
                 <CheckCircle size={36} className="text-emerald-500 mx-auto mb-4" />
-                <h3 className="font-black text-emerald-800 text-lg mb-1" style={{ fontFamily: "Merriweather, serif" }}>Message Sent!</h3>
-                <p className="text-sm text-emerald-600">We'll get back to you as soon as possible.</p>
+                <h3 className="font-black text-emerald-800 text-lg mb-1" style={{ fontFamily: "Merriweather, serif" }}>{sentAsFeedback ? "Feedback Received!" : "Message Sent!"}</h3>
+                <p className="text-sm text-emerald-600">It has been added to the admin review portal.</p>
               </div>
             ) : (
               <form onSubmit={go} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -1478,12 +1515,24 @@ function ContactPage({ onSubmitPost }: { onSubmitPost: (post: ReviewPost) => Pro
                 <div className="p-6 flex flex-col gap-5">
                   {contactError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5"><AlertCircle size={13} className="text-red-500 shrink-0" /><p className="text-xs font-bold text-red-600">{contactError}</p></div>}
                   <div className="grid grid-cols-2 gap-4">
-                    <FF label="Your Name *" placeholder="Jane Smith" value={name} onChange={setName} />
-                    <FF label="Email Address *" placeholder="you@example.com" value={email} onChange={setEmail} />
+                    <FF label={`Your Name ${isWebsiteFeedback ? "(optional)" : "*"}`} placeholder="Jane Smith" value={name} onChange={setName} />
+                    <FF label={`Email Address ${isWebsiteFeedback ? "(optional)" : "*"}`} placeholder="you@example.com" value={email} onChange={setEmail} />
                   </div>
-                  <FF label="Subject" type="select" opts={["General Inquiry", "Report Content", "Partnership", "Suggest Feature", "Scam Report", "Other"]} value={subject} onChange={setSubject} />
-                  <FF label="Message *" type="textarea" placeholder="Write your message here..." rows={6} value={message} onChange={setMessage} />
-                  <BtnDark className="w-full flex items-center justify-center gap-2"><Send size={14} /> Send Message</BtnDark>
+                  <FF label="Subject" type="select" opts={["General Inquiry", ...feedbackSubjects, "Report Content", "Partnership", "Scam Report", "Other"]} value={subject} onChange={value => { setSubject(value); if (value !== "Website Review") setRating(0); }} />
+                  {subject === "Website Review" && (
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 font-mono uppercase tracking-wider mb-2">Your Rating (optional)</p>
+                      <div className="flex gap-2" role="group" aria-label="Website rating">
+                        {[1, 2, 3, 4, 5].map(value => (
+                          <button key={value} type="button" onClick={() => setRating(value)} aria-label={`${value} star${value === 1 ? "" : "s"}`} className="w-11 h-11 rounded-lg border border-gray-200 bg-white flex items-center justify-center cursor-pointer hover:border-amber-400">
+                            <Star size={19} className={value <= rating ? "fill-amber-400 text-amber-400" : "text-gray-300"} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <FF label="Message *" type="textarea" placeholder={isWebsiteFeedback ? "Describe the bug, feature idea, or your experience. Mention the page and device if relevant..." : "Write your message here..."} rows={6} value={message} onChange={setMessage} />
+                  <BtnDark className="w-full flex items-center justify-center gap-2"><Send size={14} /> {isWebsiteFeedback ? "Submit Feedback" : "Send Message"}</BtnDark>
                 </div>
               </form>
             )}
@@ -1553,7 +1602,7 @@ function Footer({ navigate }: { navigate: (p: Page) => void }) {
           </div>
           <div>
             <p className="text-[11px] font-black font-mono uppercase tracking-widest text-gray-600 mb-4">Community</p>
-            {[{ l: "Confessions", p: "confessions" as Page }, { l: "Submit a Post", p: "submit" as Page }, { l: "Contact Us", p: "contact" as Page }].map(({ l, p }) => (
+            {[{ l: "Confessions", p: "confessions" as Page }, { l: "Submit a Post", p: "submit" as Page }, { l: "Website Feedback", p: "contact" as Page }].map(({ l, p }) => (
               <button key={l} onClick={() => navigate(p)} className="block text-xs font-bold text-gray-400 hover:text-white mb-2.5 cursor-pointer transition-colors text-left">{l}</button>
             ))}
           </div>
@@ -1651,7 +1700,7 @@ function AdminDashboard({ posts, onDecide, onDelete, onLogout }: { posts: Review
 
   const filtered = posts.filter(p => (view === "all" || p.status === view) && (typeFilter === "all" || p.type === typeFilter));
   const counts = { pending: posts.filter(p => p.status === "pending").length, approved: posts.filter(p => p.status === "approved").length, rejected: posts.filter(p => p.status === "rejected").length, flagged: posts.filter(p => p.flagged && p.status === "pending").length };
-  const typeLabel: Record<PostCategory, string> = { job: "Job", accommodation: "Room", news: "News", confession: "Confession", resource: "Resource", contact: "Contact" };
+  const typeLabel: Record<PostCategory, string> = { job: "Job", accommodation: "Room", news: "News", confession: "Confession", resource: "Resource", contact: "Feedback / Contact" };
   const typeColor: Record<PostCategory, "blue" | "green" | "orange" | "gray"> = { job: "orange", accommodation: "green", news: "blue", confession: "gray", resource: "green", contact: "blue" };
 
   useEffect(() => { if (selected) { const u = posts.find(p => p.id === selected.id); if (u) setSelected(u); } }, [posts]);
