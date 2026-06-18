@@ -7,7 +7,7 @@ import {
   Bus, Shield, Lock, LogOut, CheckSquare, XSquare,
   Inbox, LayoutDashboard, BadgeCheck, Ban, RefreshCw, AlertCircle,
   Send, PlusCircle, Search, Filter, Star, Zap, Users, TrendingUp,
-  FileText, HelpCircle, ChevronDown, Trash2,
+  FileText, HelpCircle, ChevronDown, Trash2, Mail, ExternalLink,
 } from "lucide-react";
 import logo from "./logo.svg";
 
@@ -161,6 +161,14 @@ function isEmail(value: string) {
 function hasAny(value: string, words: string[]) {
   const text = value.toLowerCase();
   return words.some(word => text.includes(word));
+}
+
+function findEmail(value: string) {
+  return value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+}
+
+function findUrl(value: string) {
+  return value.match(/https?:\/\/[^\s]+/i)?.[0].replace(/[),.;]+$/, "") || "";
 }
 
 function formatAccommodationPrice(value: string) {
@@ -354,21 +362,112 @@ function Navbar({ current, navigate, transparent }: { current: Page; navigate: (
 // ─── HOME PAGE (unchanged) ────────────────────────────────────────────────────
 
 function JobCard({ job }: { job: ReviewPost }) {
+  const [open, setOpen] = useState(false);
   const typeColor: Record<string, "blue" | "green" | "orange" | "gray"> = { "Part-time": "orange", "Full-time": "green", "Student": "blue", "Co-op": "blue", "Flexible": "gray" };
   const jobType = job.details["Job Type"] || "Job";
+  const title = job.details["Job Title"] || job.title;
+  const howToApply = job.details["How to Apply"] || "";
+  const applicationEmail = findEmail(howToApply);
+  const applicationUrl = findUrl(howToApply);
+  const emailHref = applicationEmail
+    ? `mailto:${applicationEmail}?subject=${encodeURIComponent(`Application for ${title}`)}`
+    : "";
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   return (
-    <div className="motion-card border border-gray-200 rounded-xl p-5 bg-white hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <Tag color={typeColor[jobType] || "gray"}>{jobType}</Tag>
-        <span className="text-xs font-bold font-mono text-gray-500 shrink-0">{job.details["Pay"] || ""}</span>
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`View full details for ${title}`}
+        onClick={() => setOpen(true)}
+        onKeyDown={event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className="motion-card border border-gray-200 rounded-xl p-5 bg-white hover:border-gray-400 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+      >
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <Tag color={typeColor[jobType] || "gray"}>{jobType}</Tag>
+          <span className="text-xs font-bold font-mono text-gray-500 shrink-0">{job.details["Pay"] || ""}</span>
+        </div>
+        <h3 className="text-sm font-black text-[#1a1a1a] mb-1 leading-snug" style={{ fontFamily: "Merriweather, serif" }}>{title}</h3>
+        {job.details["Company"] && <p className="text-xs text-gray-500 font-medium mb-1">{job.details["Company"]}</p>}
+        {job.details["Location"] && <div className="flex items-center gap-1 text-xs text-gray-400 mb-1"><MapPin size={11} />{job.details["Location"]}</div>}
+        {job.details["Schedule"] && <div className="flex items-center gap-1 text-xs text-gray-400"><Clock size={11} />{job.details["Schedule"]}</div>}
+        {job.details["Description"] && <p className="mt-3 text-xs text-gray-500 leading-relaxed line-clamp-2">{job.details["Description"]}</p>}
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1 text-[11px] text-gray-300 font-mono"><CheckCircle size={10} className="text-emerald-400" /> Verified</div>
+          <span className="flex items-center gap-1 text-xs font-black text-emerald-700">View full details <ChevronRight size={13} /></span>
+        </div>
       </div>
-      <h3 className="text-sm font-black text-[#1a1a1a] mb-1 leading-snug" style={{ fontFamily: "Merriweather, serif" }}>{job.details["Job Title"] || job.title}</h3>
-      {job.details["Company"] && <p className="text-xs text-gray-500 font-medium mb-1">{job.details["Company"]}</p>}
-      {job.details["Location"] && <div className="flex items-center gap-1 text-xs text-gray-400 mb-1"><MapPin size={11} />{job.details["Location"]}</div>}
-      {job.details["Schedule"] && <div className="flex items-center gap-1 text-xs text-gray-400"><Clock size={11} />{job.details["Schedule"]}</div>}
-      {job.details["How to Apply"] && <div className="mt-4 pt-3 border-t border-gray-100"><p className="text-[11px] text-gray-400 font-mono">Apply: {job.details["How to Apply"]}</p></div>}
-      <div className="flex items-center gap-1 text-[11px] text-gray-300 mt-3 font-mono"><CheckCircle size={10} className="text-emerald-400" /> Verified · {job.submittedAt}</div>
-    </div>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/65 px-4 py-6 sm:py-10 flex items-end sm:items-center justify-center"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby={`job-title-${job.id}`} className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-2xl flex flex-col">
+            <div className="border-b border-gray-200 px-5 sm:px-7 py-5 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Tag color={typeColor[jobType] || "gray"}>{jobType}</Tag>
+                  {job.details["Pay"] && <span className="text-xs font-black text-emerald-700">{job.details["Pay"]}</span>}
+                </div>
+                <h2 id={`job-title-${job.id}`} className="text-xl sm:text-2xl font-black text-[#1a1a1a] leading-tight" style={{ fontFamily: "Merriweather, serif" }}>{title}</h2>
+                {job.details["Company"] && <p className="mt-1 text-sm font-bold text-gray-500">{job.details["Company"]}</p>}
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close job details" className="w-10 h-10 shrink-0 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 cursor-pointer"><X size={18} /></button>
+            </div>
+
+            <div className="overflow-y-auto px-5 sm:px-7 py-6">
+              <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                {job.details["Location"] && <div className="rounded-lg bg-gray-50 border border-gray-200 p-3"><p className="text-[10px] font-black uppercase text-gray-400 mb-1">Location</p><p className="text-sm font-bold text-gray-700 flex items-center gap-2"><MapPin size={14} />{job.details["Location"]}</p></div>}
+                {job.details["Schedule"] && <div className="rounded-lg bg-gray-50 border border-gray-200 p-3"><p className="text-[10px] font-black uppercase text-gray-400 mb-1">Schedule</p><p className="text-sm font-bold text-gray-700 flex items-center gap-2"><Clock size={14} />{job.details["Schedule"]}</p></div>}
+              </div>
+
+              <section className="mb-6">
+                <h3 className="text-xs font-black uppercase text-gray-400 mb-2">Job description</h3>
+                <p className="text-sm sm:text-base text-gray-700 leading-7 whitespace-pre-wrap">{job.details["Description"] || "No additional description was provided."}</p>
+              </section>
+
+              {howToApply && (
+                <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <h3 className="text-xs font-black uppercase text-emerald-700 mb-2">How to apply</h3>
+                  <p className="text-sm text-emerald-900 leading-relaxed break-words">{howToApply}</p>
+                </section>
+              )}
+
+              <div className="mt-5 text-[11px] text-gray-400 font-mono flex items-center gap-1"><CheckCircle size={11} className="text-emerald-500" /> Reviewed by Ottawa Community Hub · {job.submittedAt}</div>
+            </div>
+
+            {(applicationEmail || applicationUrl) && (
+              <div className="border-t border-gray-200 bg-white px-5 sm:px-7 py-4 flex flex-col sm:flex-row gap-3">
+                {applicationEmail && <a href={emailHref} className="min-h-11 flex-1 rounded-lg bg-[#1a1a1a] px-4 py-3 text-center text-sm font-black text-white flex items-center justify-center gap-2 hover:bg-black"><Mail size={16} /> Apply by email</a>}
+                {applicationUrl && <a href={applicationUrl} target="_blank" rel="noreferrer" className="min-h-11 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-black text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50"><ExternalLink size={16} /> Open application link</a>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
