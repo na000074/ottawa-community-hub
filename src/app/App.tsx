@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"; 
+import { createPortal } from "react-dom";
 
 import { 
   Newspaper, Home, Building2, Briefcase, MessageCircle, BookOpen,
@@ -417,15 +418,15 @@ function JobCard({ job }: { job: ReviewPost }) {
         </div>
       </div>
 
-      {open && (
+      {open && createPortal((
         <div
-          className="fixed inset-0 z-[100] bg-black/65 px-4 py-6 sm:py-10 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[100] grid min-h-full place-items-start sm:place-items-center overflow-y-auto overscroll-contain bg-black/65 px-4 py-4 sm:py-10"
           onMouseDown={event => {
             if (event.target === event.currentTarget) setOpen(false);
           }}
         >
-          <div role="dialog" aria-modal="true" aria-labelledby={`job-title-${job.id}`} className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-2xl flex flex-col">
-            <div className="border-b border-gray-200 px-5 sm:px-7 py-5 flex items-start justify-between gap-4">
+          <div role="dialog" aria-modal="true" aria-labelledby={`job-title-${job.id}`} className="mx-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-2xl flex flex-col">
+            <div className="shrink-0 border-b border-gray-200 px-5 sm:px-7 py-5 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <Tag color={typeColor[jobType] || "gray"}>{jobType}</Tag>
@@ -437,7 +438,7 @@ function JobCard({ job }: { job: ReviewPost }) {
               <button type="button" onClick={() => setOpen(false)} aria-label="Close job details" className="w-10 h-10 shrink-0 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 cursor-pointer"><X size={18} /></button>
             </div>
 
-            <div className="overflow-y-auto px-5 sm:px-7 py-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 py-6">
               <div className="grid sm:grid-cols-2 gap-3 mb-6">
                 {job.details["Location"] && <div className="rounded-lg bg-gray-50 border border-gray-200 p-3"><p className="text-[10px] font-black uppercase text-gray-400 mb-1">Location</p><p className="text-sm font-bold text-gray-700 flex items-center gap-2"><MapPin size={14} />{job.details["Location"]}</p></div>}
                 {job.details["Schedule"] && <div className="rounded-lg bg-gray-50 border border-gray-200 p-3"><p className="text-[10px] font-black uppercase text-gray-400 mb-1">Schedule</p><p className="text-sm font-bold text-gray-700 flex items-center gap-2"><Clock size={14} />{job.details["Schedule"]}</p></div>}
@@ -459,14 +460,14 @@ function JobCard({ job }: { job: ReviewPost }) {
             </div>
 
             {(applicationEmail || applicationUrl) && (
-              <div className="border-t border-gray-200 bg-white px-5 sm:px-7 py-4 flex flex-col sm:flex-row gap-3">
+              <div className="shrink-0 border-t border-gray-200 bg-white px-5 sm:px-7 py-4 flex flex-col sm:flex-row gap-3">
                 {applicationEmail && <a href={emailHref} className="min-h-11 flex-1 rounded-lg bg-[#1a1a1a] px-4 py-3 text-center text-sm font-black text-white flex items-center justify-center gap-2 hover:bg-black"><Mail size={16} /> Apply by email</a>}
                 {applicationUrl && <a href={applicationUrl} target="_blank" rel="noreferrer" className="min-h-11 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-black text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50"><ExternalLink size={16} /> Open application link</a>}
               </div>
             )}
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
